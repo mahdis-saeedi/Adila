@@ -1,0 +1,78 @@
+name: tests-main
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-toy-configs:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'skip-ci') }}
+
+    strategy:
+      matrix:
+        include:
+
+          #    for alg in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort', 'fa-ir']:
+          #        for notion in ['eo', 'dp']:
+          #            for att in ['popularity', 'gender']:
+          #                for th in ['avg', 'auc']:
+          #                    params.settings['fair']['popularity_thresholding'] = th
+          #                    params.settings['fair']['k_max'] = 10
+          #                    Reranking.run(fpred='../output/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/f0.test.pred',
+          #                                  output='../output/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/',
+          #                                  fteamsvecs='../data/preprocessed/dblp/toy.dblp.v12.json/teamsvecs.pkl',
+          #                                  fsplits='../output/toy.dblp.v12.json/splits.json',
+          #                                  fgender='../data/preprocessed/dblp/toy.dblp.v12.json/gender.csv',
+          #                                  fairness_notion=notion,
+          #                                  att=att,
+          #                                  algorithm=alg,
+          #                                  k_max=params.settings['fair']['k_max'],
+          #                                  alpha=params.settings['fair']['alpha'],
+          #                                  np_ratio=params.settings['fair']['np_ratio'],
+          #                                  popularity_thresholding=params.settings['fair']['popularity_thresholding'],
+          #                                  fairness_metrics=params.settings['fair']['metrics'],
+          #                                  utility_metrics=params.settings['utility_metrics'])
+
+          - config: '+id=000 cmd=prep data.domain=cmn.publication.Publication data.source=../data/dblp/toy.dblp.v12.json data.output=../output/dblp/toy.dblp.v12.json ~data.filter ~data.embedding ~data.hf'
+          - config: '+id=005 cmd=prep data.domain=cmn.publication.Publication data.source=../data/dblp/toy.dblp.v12.json data.output=../output/dblp/toy.dblp.v12.json ~data.filter ~data.embedding acceleration=cuda:5'
+            label: fail.validate
+
+          - config: '+id=014 cmd=prep data.domain=cmn.movie.Movie data.source=../data/imdb/toy.title.basics.tsv data.output=../output/imdb/toy.title.basics.tsv ~data.filter ~data.embedding ~data.hf'
+            label: fail.validate
+
+          - config: '+id=036 cmd=prep data.domain=cmn.patent.Patent data.source=../data/uspt/toy.patent.tsv data.output=../output/uspt/toy.patent.tsv ~data.filter ~data.embedding ~data.hf'
+          - config: '+id=041 cmd=prep data.domain=cmn.patent.Patent data.source=../data/uspt/toy.patent.tsv data.output=../output/uspt/toy.patent.tsv ~data.filter ~data.embedding acceleration=cuda:5'
+            label: fail.validate
+
+      # Set to false if you want parallel runs:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Clean up previous outputs
+        run: rm -rf output/
+
+      - name: Echo config index
+        run: |
+          echo 'Config index: ${{ matrix.index }}'
+
+      - name: Run config ${{ matrix.config }}
+        run: |
+          python main.py ${{ matrix.config }}
+        working-directory: ./src
+        continue-on-error: ${{ matrix.label == 'fail.validate' }}
+
