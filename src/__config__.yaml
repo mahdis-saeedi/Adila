@@ -14,14 +14,14 @@ data:
   output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
 
 fair: #post-hoc reranks of the prediction list
-  algorithm: det_greedy #reranking algorithm from {det_greedy, det_cons, det_relaxed, fa-ir}; required; Eg. det_cons
+  algorithm: fa-ir #reranking algorithm from {det_greedy, det_cons, det_relaxed, fa-ir}; required; Eg. det_cons
   notion: eo # equality of odds (eo), demographic parity (dp)
   k_max: 100 #cutoff for the reranking algorithms; default: None
   attribute: popularity #the sensitive attribute from {popularity, gender}
   dp_ratio: #hard ratio for desired (e.g., female or non-popular) experts after reranking for dp; if None, based on distribution in dataset; default: None; Eg. 0.5
   is_popular_alg: avg #popularity status based on `avg` teams per experts, i.e., whoever above this value is popular, or whoever is in the head of `auc` distribution figure
   is_popular_coef: 1.0
-  alpha: 0.1, #the significance value for fa-ir algorithm
+  alpha: 0.1 #the significance value for fa-ir algorithm
 
 eval:
   fair_metrics': [ndkl, skew, exp, expu]

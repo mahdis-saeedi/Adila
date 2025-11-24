@@ -76,7 +76,7 @@ class Adila:
         if self.fair_notion == 'dp': ratios = [stats['minority_ratio']]
         return stats, minorities, ratios
 
-    def rerank(self, fpred, minorities, ratios, algorithm='det_greedy', k_max=100, alpha= 0.05) -> tuple:
+    def rerank(self, fpred, minorities, ratios, algorithm='det_greedy', k_max=100, alpha=0.05) -> tuple:
         """
         Args:
             fpred: predictions for test teams |test| * |experts|
@@ -88,10 +88,13 @@ class Adila:
         Returns:
             tuple (list, list)
         """
+        preds = torch.load(fpred)['y_pred']
+        log.info(f'{opentf.textcolor["blue"]}Reranking {fpred} using {algorithm} with {k_max} cutoff ...{opentf.textcolor["reset"]}')
+        # preds = torch.tensor([[0.1, 0.5, 0.3, 0.4,  0.1, 0.8, 0.3]])
         reranked_file = f'{self.output}/{self.fair_notion}/{os.path.split(fpred)[-1]}.{algorithm}.{self.is_popular_alg + "." if self.attribute=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "") + "." if algorithm=="fa-ir" else ""}{k_max}.rerank.pred'
         try:
             log.info(f'Loading reranked file {reranked_file} for {fpred} if exists ...')
-            with open(reranked_file, 'rb') as f: sparse_matrix_reranked = pickle.load(f)
+            with open(reranked_file, 'rb') as f: csr_reranked = pickle.load(f)
         except FileNotFoundError:
             log.info(f'No existing rerank version. Reranking {fpred} ...')
             # start_time = perf_counter()
@@ -99,18 +102,14 @@ class Adila:
 
             if algorithm == 'fa-ir':
                 fsc = opentf.install_import('fairsearchcore')
-                fsd = opentf.install_import('', 'fairsearchcore.models', 'FairScoreDoc')
-                fair = fsc.Fair(k_max, 1 - r if self.attribute == 'popularity' else r, alpha)
+                fair = fsc.Fair(min(k_max, preds.shape[1]), 1 - r if self.attribute == 'popularity' else r, alpha)
             elif algorithm in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort']:
                 frr = opentf.install_import('reranking')
 
-            reranked_teams_idx, reranked_teams_probs, protected = list(), list(), list()
-
-            preds = torch.load(fpred)['y_pred']
-            log.info(f'Reranking {fpred} using {algorithm} with {k_max} cutoff ...')
+            rows, cols, value = list(), list(), list() #for the final reranked probs
             for i, team in enumerate(tqdm(preds)):
-                member_probs = [(m, True if m in minorities else False, float(team[m])) for m in range(len(team))]
-                member_probs.sort(key=lambda x: x[2], reverse=True)
+                ranked_member_probs = [(m, True if m in minorities else False, float(team[m])) for m in range(len(team))]
+                ranked_member_probs.sort(key=lambda x: x[2], reverse=True) #[0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
 
                 if self.fair_notion == 'eo': r = min(max(ratios[i], 0.1), 0.9)  # dynamic ratio r, clamps to stay between [0.1,0.9]
 
@@ -118,50 +117,51 @@ class Adila:
                     # FairScoreDocs needs True label for the members of the protected group.
                     # For gender, our minorities and protected group is the same, i.e., females.
                     # For popularilty, our minorities are populars but the protected group is non-populars. So, 'not' of their minority labels
-                    ranked_experts = [fsd.FairScoreDoc(m[0], m[2], not m[1] if self.attribute=='popularity' else m[1]) for m in member_probs]
+                    ranked_experts = [fsc.models.FairScoreDoc(m[0], m[2], not m[1] if self.attribute=='popularity' else m[1]) for m in ranked_member_probs]
                     # Reset the Fair obj to dynamic ratio r
-                    if self.fair_notion == 'eo': fair = fsc.Fair(k_max, 1 - r if self.attribute == 'popularity' else r, alpha)  # fair.p = r; fair._cache = {} #reset the Fair obj but it's buggy
+                    if self.fair_notion == 'eo': fair = fsc.Fair(min(k_max, preds.shape[1]), 1 - r if self.attribute == 'popularity' else r, alpha)  # fair.p = r; fair._cache = {} #reset the Fair obj but it's buggy
 
-                    if fair.is_fair(ranked_experts[:k_max]): reranked = ranked_experts[:k_max] #no change
-                    else: reranked = fair.re_rank(ranked_experts)[:k_max]
-                    reranked_teams_idx.append([x.id for x in reranked])
-                    reranked_teams_probs.append([x.score for x in reranked])
+                    # fairsearchcore/fail_prob.py L#177 in __hash__(), cast to int. The value of self.remaining_candidates is of numpy type!
+                    # see https://github.com/fair-search/fairsearch-fair-python/issues/4
+                    if fair.is_fair(ranked_experts[:k_max]): reranked_idx = ranked_experts[:k_max] #no change
+                    else: reranked_idx = fair.re_rank(ranked_experts)[:k_max]
+                    reranked_idx = [x.id for x in reranked_idx]
+                    # reranked_idx = [2, 0, 1, 5, 4, 3, 6]
 
                 elif algorithm in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort']:
-                    reranked_idx = frr.rerank([label for _, label, _ in member_probs], {True: r, False: 1 - r}, None, min(k_max, len(member_probs)), algorithm)
-                    reranked_probs = [member_probs[m][2] for m in reranked_idx]
-                    reranked_teams_idx.append(reranked_idx)
-                    reranked_teams_probs.append(reranked_probs)
+                    reranked_idx = frr.rerank([label for _, label, _ in ranked_member_probs], {True: r, False: 1 - r}, None, min(k_max, preds.shape[1]), algorithm, verbose=False) #verbose=True, a dataframe with more info
+                    # reranked_idx = [2, 0, 1, 5, 4, 3, 6]
 
-                elif algorithm == 'fair_greedy':
-                    #TODO refactor and parameterize this algorithm
-                    bias_dict = dict([(member_probs.index(m), {'att': m[1], 'prob': m[2], 'idx': m[0]}) for m in member_probs[:500]])
-                    method = 'move_down'
-                    reranked_idx = fairness_greedy(bias_dict, r, 'att', method)[:k_max]
-                    reranked_probs = [bias_dict[idx]['prob'] for idx in reranked_idx[:k_max]]
-                    reranked_teams_idx.append(reranked_idx)
-                    reranked_teams_probs.append(reranked_probs)
+                # elif algorithm == 'fair_greedy':
+                #     #TODO refactor and parameterize this algorithm
+                #     bias_dict = dict([(member_probs.index(m), {'att': m[1], 'prob': m[2], 'idx': m[0]}) for m in member_probs[:500]])
+                #     method = 'move_down'
+                #     reranked_idx = fairness_greedy(bias_dict, r, 'att', method)[:k_max]
+                #     reranked_probs = [bias_dict[idx]['prob'] for idx in reranked_idx[:k_max]]
 
                 else: raise ValueError('Invalid fair reranking algorithm!')
 
-            rows, cols, value = list(), list(), list()
-            for i, reranked_team in enumerate(tqdm(reranked_teams_idx)):
-                for j, reranked_member in enumerate(reranked_team):
+                for j, reranked_member in enumerate(reranked_idx):
                     rows.append(i)
                     cols.append(reranked_member)
-                    value.append(reranked_teams_probs[i][j])
-            sparse_matrix_reranked = csr_matrix((value, (rows, cols)), shape=preds.shape)
-            with open(f'{self.output}/{self.fair_notion}/{os.path.split(fpred)[-1]}.{algorithm}.{self.is_popular_alg + "." if self.attribute=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "") + "." if algorithm=="fa-ir" else ""}{k_max}.rerank.pred', 'wb') as f: pickle.dump(sparse_matrix_reranked, f)
-        return sparse_matrix_reranked
-    @staticmethod
-    def calculate_prob(atr: bool, team: list) -> float: return team.count(atr) / len(team)
+                    value.append(ranked_member_probs[j][2])
+                    # we switch the top-rank probs for top-re-ranked experts
+                    # this way both lists give correct top experts after final rankings for evaluation
+                    # example:
+                    # preds: [0.1, 0.5, 0.3, 0.4, 0.1, 0.8, 0.3]
+                    # sorted preds: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [5, 1, 3, 6, 2, 0, 4]
+                    # rerank: [2, 0, 1, 5, 4, 3, 6] -> assign top probs [0.5, 0.4, 0.8, 0.3, 0.3, 0.1, 0.1]
+                    # sorted rerank: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [2, 0, 1, 5, 4, 3, 6]
 
-    @staticmethod
-    def eval_fairness(preds, labels, reranked_idx, ratios, output, algorithm, k_max, alpha, fairness_notion: str = 'dp', metrics: set = {'skew', 'ndkl'}, att: str = 'popularity', popularity_thresholding: str ='avg' ):
+            csr_reranked = csr_matrix((value, (rows, cols)), shape=preds.shape) #[0.5, 0.4, 0.8, 0.1, 0.3, 0.3, 0.1]
+            with open(reranked_file, 'wb') as f: pickle.dump(csr_reranked, f)
+        return preds, csr_reranked
+
+    def eval_fair(self, preds, minorities, reranked_idx, ratios, k_max, alpha, metrics: set = {'skew', 'ndkl'}):
         """
         Args:
             preds: loaded predictions from a .pred file
-            labels: popularity labels
+            minorities: popularity labels
             reranked_idx: indices of re-ranked teams with a pre-defined cut-off
             ratios: desired ratio of popular/non-popular items in the output
             output: address of the output directory
@@ -175,6 +175,7 @@ class Adila:
         # if algorithm == 'fa-ir':
         #     labels = [not value for value in labels]
         dic_before, dic_after = dict(), dict()
+        frr = opentf.install_import('reranking')
         for metric in metrics:
             dic_before[metric], dic_after[metric] = list(), list()
             if metric in ['skew', 'exp', 'expu']: dic_before[metric], dic_after[metric] = {'protected': [], 'nonprotected': []}, {'protected': [], 'nonprotected': []}
@@ -188,16 +189,18 @@ class Adila:
                 member_probs.sort(key=lambda x: x[2], reverse=True)
                 #IMPORTANT: the ratios keys should match the labels!
                 if 'ndkl' == metric:
-                    dic_before[metric].append(reranking.ndkl([label for _, label, _ in member_probs[:threshold]], r))
-                    dic_after[metric].append(reranking.ndkl([labels[int(m)] for m in reranked_idx[i]], r))
+                    dic_before[metric].append(frr.ndkl([label for _, label, _ in member_probs[:threshold]], r))
+                    dic_after[metric].append(frr.ndkl([labels[int(m)] for m in reranked_idx[i]], r))
+
+                def calculate_prob(atr: bool, team: list) -> float: return team.count(atr) / len(team)
 
                 if 'skew' == metric:
                     l_before = [label for _, label, _ in member_probs[: threshold]]
                     l_after = [labels[int(m)] for m in reranked_idx[i]]
-                    dic_before['skew']['protected'].append(reranking.skew(Reranking.calculate_prob(False, l_before), r[False]))
-                    dic_before['skew']['nonprotected'].append(reranking.skew(Reranking.calculate_prob(True, l_before), r[True]))
-                    dic_after['skew']['protected'].append(reranking.skew(Reranking.calculate_prob(False, l_after), r[False]))
-                    dic_after['skew']['nonprotected'].append(reranking.skew(Reranking.calculate_prob(True, l_after), r[True]))
+                    dic_before['skew']['protected'].append(frr.skew(calculate_prob(False, l_before), r[False]))
+                    dic_before['skew']['nonprotected'].append(frr.skew(calculate_prob(True, l_before), r[True]))
+                    dic_after['skew']['protected'].append(frr.skew(calculate_prob(False, l_after), r[False]))
+                    dic_after['skew']['nonprotected'].append(frr.skew(calculate_prob(True, l_after), r[True]))
 
                 if metric in ['exp', 'expu']:
                     #TODO Needs Refactor
@@ -232,30 +235,6 @@ class Adila:
             df_after = pd.DataFrame(dic_after[metric]).mean(axis=0).to_frame('mean.after')
             df = pd.concat([df_before, df_after], axis=1)
             df.to_csv(f'{output}.{algorithm}.{popularity_thresholding+"."  if att=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "")+"." if algorithm=="fa-ir" else ""}{k_max}.{metric}.faireval.csv', index_label='metric')
-
-    @staticmethod
-    def reranked_preds(teamsvecs_members, splits, reranked_idx, reranked_probs, output, algorithm, k_max, alpha, att: str = 'popularity', popularity_thresholding: str ='avg') -> csr_matrix:
-        """
-        Args:
-            teamsvecs_members: teamsvecs pickle file
-            splits: indices of test and train samples
-            reranked_idx: indices of re-ranked teams with a pre-defined cut-off
-            reranked_probs: original probability of re-ranked items
-            output: address of the output directory
-
-        Returns:
-            csr_matrix
-        """
-        y_test = teamsvecs_members[splits['test']]
-        rows, cols, value = list(), list(), list()
-        for i, reranked_team in enumerate(tqdm(reranked_idx)):
-            for j, reranked_member in enumerate(reranked_team):
-                rows.append(i)
-                cols.append(reranked_member)
-                value.append(reranked_probs[i][j])
-        sparse_matrix_reranked = csr_matrix((value, (rows, cols)), shape=y_test.shape)
-        with open(f'{output}.{algorithm}.{popularity_thresholding+"." if att=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "")+"." if algorithm=="fa-ir" else ""}{k_max}.rerank.pred', 'wb') as f: pickle.dump(sparse_matrix_reranked, f)
-        return sparse_matrix_reranked
 
     @staticmethod
     def eval_utility(teamsvecs_members, reranked_preds, fpred, preds, splits, metrics, output, algorithm, k_max, alpha,  att: str = 'popularity', popularity_thresholding: str ='avg' ) -> None:
@@ -293,10 +272,10 @@ def run(cfg) -> None:
     if cfg.fair.notion == 'dp' and cfg.fair.dp_ratio: ratios = [1 - cfg.fair.ratio if cfg.fair.attribute == 'popularity' else cfg.fair.ratio]
 
 
-    if os.path.isfile(cfg.data.fpreds):
-        reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
+    if os.path.isfile(cfg.data.fpreds): reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
 
-    for algorithm in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort', 'fa-ir']:
+
+    for algorithm in ['det_greedy', 'det_relaxed', 'det_const_sort', 'fa-ir', 'det_cons']:
         for notion in ['eo', 'dp']:
             for attribute in ['popularity', 'gender']:
                 for is_popular_alg in ['avg', 'auc']:
@@ -304,39 +283,42 @@ def run(cfg) -> None:
                                   cfg.data.output, notion, attribute, is_popular_alg)
                     stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
                     if os.path.isfile(cfg.data.fpreds):
-                        reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm,
+                        try:
+                            reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm,
                                                       cfg.fair.k_max, cfg.fair.alpha)
+                        except Exception as e:
+                            print(e)
 
-    if os.path.isdir(cfg.data.fpreds):
-        # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
-        files = list()
-        for dirpath, dirnames, filenames in os.walk(cfg.data.fpreds): files += [os.path.join(os.path.normpath(dirpath), file).split(os.sep) for file in filenames if file.endswith("pred") and 'rerank' not in file]
-
-        files = pd.DataFrame(files, columns=['.', '..', 'domain', 'baseline', 'setting', 'rfile'])
-        address_list = list()
-
-        pairs = []
-        for i, row in files.iterrows():
-            output = f"{row['.']}/{row['..']}/{row['domain']}/{row['baseline']}/{row['setting']}/"
-            pairs.append((f'{output}{row["rfile"]}', f'{output}rerank/'))
-
-        if params.settings['parallel']:
-            print(f'Parallel run started ...')
-            with multiprocessing.Pool(multiprocessing.cpu_count() if params.settings['core'] < 0 else params.settings['core']) as executor:
-                executor.starmap(partial(Reranking.run,
-                                         fsplits=args.fsplits,
-                                         fairness_notion=args.fairness_notion,
-                                         att=args.att,
-                                         fgender=args.fgender,
-                                         algorithm=args.algorithm,
-                                         k_max=params.settings['fair']['k_max'],
-                                         alpha=params.settings['fair']['alpha'],
-                                         np_ratio=params.settings['fair']['np_ratio'],
-                                         popularity_thresholding=params.settings['fair']['popularity_thresholding'],
-                                         fairness_metrics=params.settings['fair']['metrics'],
-                                         fteamsvecs=args.fteamsvecs,
-                                         utility_metrics=params.settings['utility_metrics']), pairs)
-
+    # if os.path.isdir(cfg.data.fpreds):
+    #     # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
+    #     files = list()
+    #     for dirpath, dirnames, filenames in os.walk(cfg.data.fpreds): files += [os.path.join(os.path.normpath(dirpath), file).split(os.sep) for file in filenames if file.endswith("pred") and 'rerank' not in file]
+    #
+    #     files = pd.DataFrame(files, columns=['.', '..', 'domain', 'baseline', 'setting', 'rfile'])
+    #     address_list = list()
+    #
+    #     pairs = []
+    #     for i, row in files.iterrows():
+    #         output = f"{row['.']}/{row['..']}/{row['domain']}/{row['baseline']}/{row['setting']}/"
+    #         pairs.append((f'{output}{row["rfile"]}', f'{output}rerank/'))
+    #
+    #     if params.settings['parallel']:
+    #         print(f'Parallel run started ...')
+    #         with multiprocessing.Pool(multiprocessing.cpu_count() if params.settings['core'] < 0 else params.settings['core']) as executor:
+    #             executor.starmap(partial(Reranking.run,
+    #                                      fsplits=args.fsplits,
+    #                                      fairness_notion=args.fairness_notion,
+    #                                      att=args.att,
+    #                                      fgender=args.fgender,
+    #                                      algorithm=args.algorithm,
+    #                                      k_max=params.settings['fair']['k_max'],
+    #                                      alpha=params.settings['fair']['alpha'],
+    #                                      np_ratio=params.settings['fair']['np_ratio'],
+    #                                      popularity_thresholding=params.settings['fair']['popularity_thresholding'],
+    #                                      fairness_metrics=params.settings['fair']['metrics'],
+    #                                      fteamsvecs=args.fteamsvecs,
+    #                                      utility_metrics=params.settings['utility_metrics']), pairs)
+    #
 
     #
     # try:
