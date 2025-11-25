@@ -65,7 +65,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Clean up previous outputs
-        run: rm -rf output/
+        run: rm -rf output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/
 
       - name: Echo config index
         run: |
