@@ -1,16 +1,11 @@
-import pickle as pkl
-from scipy.sparse import find
-
-import statistics
-import scipy.sparse
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy import interpolate
+import pickle as pkl, statistics, numpy as np
 from collections import Counter
 
+import pkgmgr as opentf
 
+pd = opentf.install_import('pandas')
+plt = opentf.install_import('matplotlib', 'matplotlib.pyplot')
+scipy = opentf.install_import('scipy')
 
 def bubble_plot(fairness: list, utility: list, runtime: list, figsize: list = [14, 8], xlabel: str = "Fairness Metric", ylabel: str = "Utility Metric", save: bool = False):
     """
@@ -23,6 +18,7 @@ def bubble_plot(fairness: list, utility: list, runtime: list, figsize: list = [1
         ylabel: label for the y-axis on the plot
         save: flag to determine saving the plot
     """
+    sns = opentf.install_import('seaborn')
     plt.rcParams['figure.figsize'] = figsize
     sns.set_style("darkgrid")  # used just for a darker background with grids (not required)
     # Plots data using seaborn
@@ -63,7 +59,6 @@ def plot_distribution(data1 : list, data2 : list, n : int):
     # Displays graph
     plt.show()
 
-
 def mid_calc(x : np.ndarray, y : np.ndarray)->int:
     """
     Helper function that calculates the middle point of the data set that divides the area equally
@@ -93,7 +88,6 @@ def mid_calc(x : np.ndarray, y : np.ndarray)->int:
         right_area = round(np.trapz(y[mid_index : ], x[mid_index : ]), 3)
     return mid_index
 
-
 def area_under_curve(data_x: list, data_y: list, xlabel: str, ylabel: str, lcolor: str='green', rcolor: str='orange', show_plot: bool=True)->float:
     """
     Args:
@@ -105,7 +99,7 @@ def area_under_curve(data_x: list, data_y: list, xlabel: str, ylabel: str, lcolo
     fig, ax = plt.subplots(figsize = (2,2))
     plt.rcParams.update({'font.family': 'Consolas'})
     # To plot a line graph of the data, interpolation can be used which creates a function based on the data points
-    f = interpolate.interp1d(data_x, data_y, kind='linear') 
+    f = scipy.interpolate.interp1d(data_x, data_y, kind='linear')
     xnew = np.arange(min(data_x), max(data_x), 0.001) # returns evenly spaced values from the data set
     ynew = f(xnew)
     ax.plot(xnew, ynew, color = 'red')
@@ -177,8 +171,6 @@ def attribute_distribution_plot(teamsvecs: scipy.sparse.lil_matrix, index_att: p
     fig.savefig(f'{plot_title}_{att}_nmembers_nteams.pdf', dpi=200, bbox_inches='tight')
     plt.show()
 
-
-
 def graph_members_with_most_teams_topK(teamsvecsFile: str, k: int):
     """
     Generates a graph that plots the members from most amount of teams to least amount of teams.
@@ -203,7 +195,7 @@ def graph_members_with_most_teams_topK(teamsvecsFile: str, k: int):
         for j in range(0, ROWS):
             row = (opeNTF_out["member"].getrow(j)) 
             # Find all the non-zero entries: (what the [1] is for)
-            for i in find(row)[1]: data_y[i] += 1 
+            for i in scipy.sparse.find(row)[1]: data_y[i] += 1
 
         # Make x axis 0 to k:
         for i in range(0, k): data_x.append(i)

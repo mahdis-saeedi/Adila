@@ -12,7 +12,8 @@ numpy==1.24.4
 #$ pytrec-eval-terrier==0.5.2
 
 #$ reranking==0.3.6 #https://pypi.org/project/reranking/ #https://github.com/yuanlonghao/reranking
-#$ fairsearchcore==1.0.4 #https://github.com/fair-search/fairsearch-fair-python https://github.com/fair-search
+#$ fairsearchcore==1.0.4@git+https://github.com/fani-lab/fairsearch-fair-python.git # till pr merge, due to the __hash__ bug explained in https://github.com/fair-search/fairsearch-fair-python/issues/4
+##$ fairsearchcore==1.0.4 #https://github.com/fair-search/fairsearch-fair-python
 #$ FairRankTune #https://pypi.org/project/FairRankTune/ #https://github.com/KCachel/FairRankTune
 
 #$ seaborn

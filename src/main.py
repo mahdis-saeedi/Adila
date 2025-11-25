@@ -7,9 +7,7 @@ import hydra
 # from random import randrange
 
 #from util.fair_greedy import fairness_greedy
-import pkgmgr as opentf
-opentf.set_seed(0)
-# from plot import area_under_curve
+import pkgmgr as opentf, plot
 
 pd = opentf.install_import('pandas')
 tqdm = opentf.install_import('tqdm', from_module='tqdm')
@@ -49,7 +47,7 @@ class Adila:
             stats['*avg_nteams_expert'] = col_sums.mean()
 
             x, y = zip(*enumerate(sorted(col_sums.A1.astype(int), reverse=True)))
-            # stats['*auc_nteams_expert'] = area_under_curve(x, y, 'expert-idx', 'nteams', show_plot=False)
+            stats['*auc_nteams_expert'] = plot.area_under_curve(x, y, 'expert-idx', 'nteams', show_plot=False)
 
             threshold = coef * stats[f'*{self.is_popular_alg}_nteams_expert']
 
@@ -265,6 +263,7 @@ class Adila:
 
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
+    opentf.set_seed(cfg.seed)
 
     adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender, cfg.data.output, cfg.fair.notion, cfg.fair.attribute, cfg.fair.is_popular_alg)
     stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
@@ -280,15 +279,13 @@ def run(cfg) -> None:
     #     for notion in ['eo', 'dp']:
     #         for attribute in ['popularity', 'gender']:
     #             for is_popular_alg in ['avg', 'auc']:
-    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender,
-    #                               cfg.data.output, notion, attribute, is_popular_alg)
+    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
     #                 stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
     #                 if os.path.isfile(cfg.data.fpreds):
-    #                     try:
-    #                         reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm,
-    #                                                   cfg.fair.k_max, cfg.fair.alpha)
-    #                     except Exception as e:
-    #                         print(e)
+    #                     # try:
+    #                         reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
+    #                     # except Exception as e:
+    #                     #     print(e)
 
     # if os.path.isdir(cfg.data.fpreds):
     #     # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
