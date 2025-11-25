@@ -57,7 +57,7 @@ class Adila:
             elif self.attribute == 'gender': minorities = pd.read_csv(self.fgender).iloc[:, 0].tolist()
             stats['minority_ratio'] = len(minorities) / stats['*nexperts']
             with open(f'{self.output}/stats.pkl', 'wb') as f: pickle.dump(stats, f)
-            pd.DataFrame(data=minorities, columns=['teamsvecs-experts-colidx']).to_csv(f'{self.output}/labels.csv', index_label='teamsvecs-experts-colidx')
+            pd.DataFrame(data=minorities, columns=['teamsvecs-experts-colidx']).to_csv(f'{self.output}/labels.csv', index=False)
 
             ratios = list()
             if self.fair_notion == 'eo': # we need to know per team's ratio of minorities
