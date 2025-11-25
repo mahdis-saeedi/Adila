@@ -8,6 +8,7 @@ import hydra
 
 #from util.fair_greedy import fairness_greedy
 import pkgmgr as opentf
+opentf.set_seed(0)
 # from plot import area_under_curve
 
 pd = opentf.install_import('pandas')
