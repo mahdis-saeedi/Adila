@@ -276,19 +276,19 @@ def run(cfg) -> None:
     if os.path.isfile(cfg.data.fpreds): reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
 
 
-    for algorithm in ['det_greedy', 'det_relaxed', 'det_const_sort', 'fa-ir', 'det_cons']:
-        for notion in ['eo', 'dp']:
-            for attribute in ['popularity', 'gender']:
-                for is_popular_alg in ['avg', 'auc']:
-                    adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender,
-                                  cfg.data.output, notion, attribute, is_popular_alg)
-                    stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
-                    if os.path.isfile(cfg.data.fpreds):
-                        try:
-                            reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm,
-                                                      cfg.fair.k_max, cfg.fair.alpha)
-                        except Exception as e:
-                            print(e)
+    # for algorithm in ['det_greedy', 'det_relaxed', 'det_const_sort', 'fa-ir', 'det_cons']:
+    #     for notion in ['eo', 'dp']:
+    #         for attribute in ['popularity', 'gender']:
+    #             for is_popular_alg in ['avg', 'auc']:
+    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender,
+    #                               cfg.data.output, notion, attribute, is_popular_alg)
+    #                 stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
+    #                 if os.path.isfile(cfg.data.fpreds):
+    #                     try:
+    #                         reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm,
+    #                                                   cfg.fair.k_max, cfg.fair.alpha)
+    #                     except Exception as e:
+    #                         print(e)
 
     # if os.path.isdir(cfg.data.fpreds):
     #     # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
