@@ -14,7 +14,7 @@ data:
   output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
 
 fair: #post-hoc reranks of the prediction list
-  algorithm: fa-ir #reranking algorithm from {det_greedy, det_cons, det_relaxed, fa-ir}; required; Eg. det_cons
+  algorithm: fa-ir #reranking algorithm from {det_greedy, det_cons, det_relaxed, det_const_sort, fa-ir}; required; Eg. det_cons
   notion: eo # equality of odds (eo), demographic parity (dp)
   k_max: 100 #cutoff for the reranking algorithms; default: None
   attribute: popularity #the sensitive attribute from {popularity, gender}

@@ -1,4 +1,4 @@
-name: tests-main
+name: tests-rnd
 
 on:
   push:
@@ -18,35 +18,38 @@ jobs:
           - config: '+id=000 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=001 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=002 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=002 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=003 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
 
           - config: '+id=005 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=006 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=007 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=007 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
           - config: '+id=008 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
 
           - config: '+id=009 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=010 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=011 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=011 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=012 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
 
           - config: '+id=013 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=014 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=015 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=015 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
           - config: '+id=016 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
 
           - config: '+id=017 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=gender'
           - config: '+id=018 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=gender'
           - config: '+id=019 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=gender'
+          - config: '+id=019 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=gender'
           - config: '+id=020 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=gender'
 
           - config: '+id=021 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=gender'
           - config: '+id=022 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=gender'
           - config: '+id=023 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=gender'
+          - config: '+id=023 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=gender'
           - config: '+id=024 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=gender'
-
-#         det_cons has a bug in code, yet to be fixed
-#          - config: '+id=000 data.fpreds=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
 
       # Set to false if you want parallel runs:
       fail-fast: false
