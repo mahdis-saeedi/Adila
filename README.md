@@ -1,4 +1,6 @@
-# ``Adila``<sup>*</sup>: Fairness-Aware Team Recommendation
+# ``Adila``<sup>*</sup>: Fairness-Aware Team Recommendation 
+![Python Version](https://img.shields.io/badge/python-3.8-blue) [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![All Tests](https://img.shields.io/github/check-runs/fani-lab/Adila/main)](https://github.com/fani-lab/Adila/actions)
+
 <sup>*[ عادلة, feminine Arabic given name, meaning just and fair](https://en.wikipedia.org/wiki/Adila_(name))<sup>
 
 > Bootless Application of Greedy Re-ranking Algorithms in Fair Neural Team Formation. BIAS-ECIR, 2023.[`pdf`](https://hosseinfani.github.io/res/papers/2023_BIAS_ECIR_Bootless_Application_of_Greedy_Re-ranking_Algorithms_in_Fair_Neural_Team_Formation.pdf) [`doi`](https://doi.org/10.1007/978-3-031-37249-0_9) [`reviews`](https://hosseinfani.github.io/res/papers/2023_BIAS_ECIR_Bootless_Application_of_Greedy_Re-ranking_Algorithms_in_Fair_Neural_Team_Formation.txt) [`video`](https://www.youtube.com/watch?v=EmAFvANqzBM)
@@ -132,7 +134,7 @@ After successful run of all steps, [`./output`](./output) contains:
         └── toy.dblp.v12.json
             └── bnn
                 └── t31.s11.m13.l[100].lr0.1.b4096.e20.s1
-                    └── rerank
+                    └── adila
                         ├── gender
                         │   ├── dp
                         │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.{ndkl,skew}.faireval.csv
