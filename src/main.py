@@ -16,7 +16,7 @@ torch = opentf.install_import('torch')
 
 class Adila:
 
-    def __init__(self, fteamsvecs, fsplits, fpreds, fgender, output, fair_notion='dp', attribute='popularity', is_popular_alg='avg'):
+    def __init__(self, fteamsvecs, fsplits, fgender, output, fair_notion='dp', attribute='popularity', is_popular_alg='avg'):
         self.output = f'{output}/adila/{attribute}'
         if not os.path.isdir(self.output): os.makedirs(self.output)
         if not os.path.isdir(f'{self.output}/{fair_notion}'): os.makedirs(f'{self.output}/{fair_notion}')
@@ -26,9 +26,18 @@ class Adila:
         self.attribute = attribute
         self.fair_notion = fair_notion
         self.is_popular_alg = is_popular_alg
-        self.fpreds = fpreds
         self.fgender = fgender
+        self.minorities = []
 
+    def _get_labeled_sorted_preds(self, preds, minorities):
+        sorted_probs, sorted_indices = preds.sort(dim=1, descending=True)  # |Test| * |Experts|
+        sorted_labels = (sorted_indices[..., None] == torch.tensor(minorities)).any(dim=-1)
+        ## if |experts| are small/mid scale >> dense vector of boolean labels
+        # labels = torch.zeros(preds.shape[1], dtype=torch.bool, device=preds.device)
+        # labels[minorities] = True
+        # sorted_labels = labels[sorted_indices]  # torch uses advanced indexing, not broadcasting! still |Test| * |Experts|
+        return torch.stack([sorted_indices, sorted_labels.to(sorted_indices.dtype), sorted_probs], dim=-1)
+        # [[expertid, minority label, ranked prob], ...]
 
     def prep(self, coef=1.0) -> tuple: #coefficient to calculate a threshold for popularity (e.g. if 2.0, threshold = 2 * average number of teams per expert)
         try:
@@ -93,7 +102,7 @@ class Adila:
         reranked_file = f'{self.output}/{self.fair_notion}/{os.path.split(fpred)[-1]}.{algorithm}.{self.is_popular_alg + "." if self.attribute=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "") + "." if algorithm=="fa-ir" else ""}{k_max}.rerank.pred'
         try:
             log.info(f'Loading reranked file {reranked_file} for {fpred} if exists ...')
-            with open(reranked_file, 'rb') as f: csr_reranked = pickle.load(f)
+            with open(reranked_file, 'rb') as f: reranked_preds = pickle.load(f)
         except FileNotFoundError:
             log.info(f'No existing rerank version. Reranking {fpred} ...')
             # start_time = perf_counter()
@@ -105,18 +114,18 @@ class Adila:
             elif algorithm in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort']:
                 frr = opentf.install_import('reranking')
 
-            rows, cols, value = list(), list(), list() #for the final reranked probs
-            for i, team in enumerate(tqdm(preds)):
-                ranked_member_probs = [(m, True if m in minorities else False, float(team[m])) for m in range(len(team))]
-                ranked_member_probs.sort(key=lambda x: x[2], reverse=True) #[0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
+            reranked_preds = preds.detach().clone() #for the final reranked probs
+            ranked_teams = self._get_labeled_sorted_preds(preds, minorities)
+            # [[expertid, minority label, ranked prob], ...]
 
+            for i, ranked_team in enumerate(tqdm(ranked_teams)):
                 if self.fair_notion == 'eo': r = min(max(ratios[i], 0.1), 0.9)  # dynamic ratio r, clamps to stay between [0.1,0.9]
 
                 if algorithm == 'fa-ir':
                     # FairScoreDocs needs True label for the members of the protected group.
                     # For gender, our minorities and protected group is the same, i.e., females.
                     # For popularilty, our minorities are populars but the protected group is non-populars. So, 'not' of their minority labels
-                    ranked_experts = [fsc.models.FairScoreDoc(m[0], m[2], not m[1] if self.attribute=='popularity' else m[1]) for m in ranked_member_probs]
+                    ranked_experts = [fsc.models.FairScoreDoc(int(m[0]), float(m[2]), not bool(m[1]) if self.attribute=='popularity' else bool(m[1])) for m in ranked_team]
                     # Reset the Fair obj to dynamic ratio r
                     if self.fair_notion == 'eo': fair = fsc.Fair(min(k_max, preds.shape[1]), 1 - r if self.attribute == 'popularity' else r, alpha)  # fair.p = r; fair._cache = {} #reset the Fair obj but it's buggy
 
@@ -128,7 +137,7 @@ class Adila:
                     # reranked_idx = [2, 0, 1, 5, 4, 3, 6]
 
                 elif algorithm in ['det_greedy', 'det_relaxed', 'det_cons', 'det_const_sort']:
-                    reranked_idx = frr.rerank([label for _, label, _ in ranked_member_probs], {True: r, False: 1 - r}, None, min(k_max, preds.shape[1]), algorithm, verbose=False) #verbose=True, a dataframe with more info
+                    reranked_idx = frr.rerank([bool(label) for _, label, _ in ranked_team], {True: r, False: 1 - r}, None, min(k_max, preds.shape[1]), algorithm, verbose=False) #verbose=True, a dataframe with more info
                     # reranked_idx = [2, 0, 1, 5, 4, 3, 6]
 
                 # elif algorithm == 'fair_greedy':
@@ -140,100 +149,80 @@ class Adila:
 
                 else: raise ValueError('Invalid fair reranking algorithm!')
 
-                for j, reranked_member in enumerate(reranked_idx):
-                    rows.append(i)
-                    cols.append(reranked_member)
-                    value.append(ranked_member_probs[j][2])
-                    # we switch the top-rank probs for top-re-ranked experts
-                    # this way both lists give correct top experts after final rankings for evaluation
-                    # example:
-                    # preds: [0.1, 0.5, 0.3, 0.4, 0.1, 0.8, 0.3]
-                    # sorted preds: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [5, 1, 3, 6, 2, 0, 4]
-                    # rerank: [2, 0, 1, 5, 4, 3, 6] -> assign top probs [0.5, 0.4, 0.8, 0.3, 0.3, 0.1, 0.1]
-                    # sorted rerank: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [2, 0, 1, 5, 4, 3, 6]
+                for j, reranked_member in enumerate(reranked_idx): reranked_preds[i][reranked_member] = ranked_team[j][2]
+                # we switch the top-rank probs for top-re-ranked experts
+                # this way both lists give correct top experts after final rankings for evaluation
+                # example:
+                # preds: [0.1, 0.5, 0.3, 0.4, 0.1, 0.8, 0.3]
+                # sorted preds: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [5, 1, 3, 6, 2, 0, 4]
+                # rerank: [2, 0, 1, 5, 4, 3, 6] -> assign top probs [0.5, 0.4, 0.8, 0.3, 0.3, 0.1, 0.1]
+                # sorted rerank: [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1] -> [2, 0, 1, 5, 4, 3, 6]
 
-            csr_reranked = csr_matrix((value, (rows, cols)), shape=preds.shape) #[0.5, 0.4, 0.8, 0.1, 0.3, 0.3, 0.1]
-            with open(reranked_file, 'wb') as f: pickle.dump(csr_reranked, f)
-        return preds, csr_reranked
+            with open(reranked_file, 'wb') as f: pickle.dump(reranked_preds, f)
+        return preds, reranked_preds, reranked_file
 
-    def eval_fair(self, preds, minorities, reranked_idx, ratios, k_max, alpha, metrics: set = {'skew', 'ndkl'}):
+    def eval_fair(self, preds, minorities, reranked_preds, reranked_file, ratios, k_max, metrics=['skew', 'ndkl'], per_instance=False):
         """
         Args:
             preds: loaded predictions from a .pred file
-            minorities: popularity labels
-            reranked_idx: indices of re-ranked teams with a pre-defined cut-off
-            ratios: desired ratio of popular/non-popular items in the output
-            output: address of the output directory
+            minorities: popular or female labels
+            reranked_preds: re-ranked experts in teams with a cut-off min(k_max, preds.shape[1])
+            ratios: inferred or a desired ratio of minorities, special attention to popularity (1-popular ratio)
         Returns:
             dict: ndkl metric before and after re-ranking
         """
+        log.info(f'{opentf.textcolor["green"]}Evaluating {reranked_file} for fairness using {metrics} with {k_max} cutoff ...{opentf.textcolor["reset"]}')
+        frr = opentf.install_import('reranking') # for ndkl and skew
+        ranked_teams = self._get_labeled_sorted_preds(preds, minorities)  # [5, 1, 3, 6, 2, 0, 4] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
+        reranked_teams = self._get_labeled_sorted_preds(reranked_preds, minorities)  # [2, 0, 1, 5, 4, 3, 6] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
 
-        # because the mapping between popular/nonpopular and protected/nonprotected is reversed
-        # TODO also check if we need more specific file names ( with fairness criteria for example)
-        # use argument instead of this line
-        # if algorithm == 'fa-ir':
-        #     labels = [not value for value in labels]
-        dic_before, dic_after = dict(), dict()
-        frr = opentf.install_import('reranking')
-        for metric in metrics:
-            dic_before[metric], dic_after[metric] = list(), list()
-            if metric in ['skew', 'exp', 'expu']: dic_before[metric], dic_after[metric] = {'protected': [], 'nonprotected': []}, {'protected': [], 'nonprotected': []}
-            for i, team in enumerate(tqdm(preds)):
-                # defining the threshold for the times we have or don't have cutoff
-                threshold = len(preds) if k_max is None else k_max
+        results = []
+        for i, (team, reteam) in enumerate(tqdm(zip(ranked_teams, reranked_teams))):
+            k_max = min(k_max, preds.shape[1])
+            team_, reteam_ = team[:, 1][:k_max].bool().tolist(), reteam[:, 1][:k_max].bool().tolist()
+            if self.fair_notion == 'eo': r = min(max(ratios[i], 0.1), 0.9)  # dynamic ratio r, clamps to stay between [0.1,0.9]
+            else: r = ratios[0]
 
-                if fairness_notion == 'eo': r = {True: 1 - ratios[i], False: ratios[i]}
-                else: r = ratios
-                member_probs = [(m, labels[m], float(team[m])) for m in range(len(team))]
-                member_probs.sort(key=lambda x: x[2], reverse=True)
-                #IMPORTANT: the ratios keys should match the labels!
+            result = {}
+            for metric in metrics:
                 if 'ndkl' == metric:
-                    dic_before[metric].append(frr.ndkl([label for _, label, _ in member_probs[:threshold]], r))
-                    dic_after[metric].append(frr.ndkl([labels[int(m)] for m in reranked_idx[i]], r))
-
-                def calculate_prob(atr: bool, team: list) -> float: return team.count(atr) / len(team)
+                    result[f'before.{metric}'] = frr.ndkl(team_, {True: r, False: 1 - r})
+                    result[f'after.{metric}'] = frr.ndkl(reteam_, {True: r, False: 1 - r})
 
                 if 'skew' == metric:
-                    l_before = [label for _, label, _ in member_probs[: threshold]]
-                    l_after = [labels[int(m)] for m in reranked_idx[i]]
-                    dic_before['skew']['protected'].append(frr.skew(calculate_prob(False, l_before), r[False]))
-                    dic_before['skew']['nonprotected'].append(frr.skew(calculate_prob(True, l_before), r[True]))
-                    dic_after['skew']['protected'].append(frr.skew(calculate_prob(False, l_after), r[False]))
-                    dic_after['skew']['nonprotected'].append(frr.skew(calculate_prob(True, l_after), r[True]))
+                    result[f'before.{metric}.minority'] = frr.skew(team_.count(True)/k_max, r)
+                    result[f'before.{metric}.majority'] = frr.skew(team_.count(False)/k_max, 1 - r)
+                    result[f'after.{metric}.minority'] = frr.skew(reteam_.count(True)/k_max, r)
+                    result[f'after.{metric}.majority'] = frr.skew(reteam_.count(False)/k_max, 1 - r)
 
-                if metric in ['exp', 'expu']:
-                    #TODO Needs Refactor
-                    if metric == 'exp':
-                        exp_before, per_group_exp_before = frt.Metrics.EXP(pd.DataFrame(data=[j[0] for j in member_probs[:k_max]]), dict([(j[0], j[1]) for j in member_probs[:k_max]]), 'MinMaxRatio')
-                    elif metric == 'expu':
-                        exp_before, per_group_exp_before = frt.Metrics.EXPU(pd.DataFrame(data=[j[0] for j in member_probs[:k_max]]), dict([(j[0], j[1]) for j in member_probs[:k_max]]), pd.DataFrame(data=[j[2] for j in member_probs[:k_max]]),'MinMaxRatio')
-                    else: raise ValueError('Chosen Metric Is not Valid')
-
-                    try: dic_before[metric]['protected'].append(per_group_exp_before[False])
-                    except KeyError:dic_before[metric]['protected'].append(0)
-                    try: dic_before[metric]['nonprotected'].append(per_group_exp_before[True])
-                    except KeyError: dic_before[metric]['nonprotected'].append(0)
-                    dic_before[metric][metric] = exp_before
-
-                    if metric == 'exp':
-                        exp_after, per_group_exp_after = frt.Metrics.EXP(pd.DataFrame(data=reranked_idx[i][:k_max]), dict([(j, labels[j]) for j in reranked_idx[i][:k_max]]), 'MinMaxRatio')
-                        # dic_after[metric]['protected'].append(per_group_exp_after[False]), dic_after[metric]['nonprotected'].append(per_group_exp_after[True])
-                        # dic_after[metric][metric] = exp_after
-                    elif metric == 'expu':
-                        exp_after, per_group_exp_after = frt.Metrics.EXPU(pd.DataFrame(data=reranked_idx[i][:k_max]), dict([(j, labels[j]) for j in reranked_idx[i][:k_max]]), pd.DataFrame(data=[j[2] for i in reranked_idx[i][:k_max] for j in member_probs if j[0] == i]), 'MinMaxRatio')
-                        # dic_after[metric]['protected'].append(per_group_exp_after[False]), dic_after[metric]['nonprotected'].append(per_group_exp_after[True])
-                        # dic_after[metric][metric] = exp_after
-                    else:raise ValueError('Chosen Metric Is not Valid')
-                    try: dic_after[metric]['protected'].append(per_group_exp_after[False])
-                    except KeyError: dic_after[metric]['protected'].append(0)
-                    try:  dic_after[metric]['nonprotected'].append(per_group_exp_after[True])
-                    except KeyError:  dic_after[metric]['nonprotected'].append(0)
-                    dic_after[metric][metric] = exp_after
-
-            df_before = pd.DataFrame(dic_before[metric]).mean(axis=0).to_frame('mean.before')
-            df_after = pd.DataFrame(dic_after[metric]).mean(axis=0).to_frame('mean.after')
-            df = pd.concat([df_before, df_after], axis=1)
-            df.to_csv(f'{output}.{algorithm}.{popularity_thresholding+"."  if att=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "")+"." if algorithm=="fa-ir" else ""}{k_max}.{metric}.faireval.csv', index_label='metric')
+                # if metric in ['exp', 'expu']:
+                #     frt = opentf.install_import('FairRankTune') #python 3.9+
+                #     if metric == 'exp': exp_before, per_group_exp_before = frt.Metrics.EXP(pd.DataFrame(data=[j[0] for j in member_probs[:k_max]]), dict([(j[0], j[1]) for j in member_probs[:k_max]]), 'MinMaxRatio')
+                #     elif metric == 'expu': exp_before, per_group_exp_before = frt.Metrics.EXPU(pd.DataFrame(data=[j[0] for j in member_probs[:k_max]]), dict([(j[0], j[1]) for j in member_probs[:k_max]]), pd.DataFrame(data=[j[2] for j in member_probs[:k_max]]),'MinMaxRatio')
+                #
+                #     try: before[metric]['protected'].append(per_group_exp_before[False])
+                #     except KeyError: before[metric]['protected'].append(0)
+                #     try: before[metric]['nonprotected'].append(per_group_exp_before[True])
+                #     except KeyError: before[metric]['nonprotected'].append(0)
+                #     before[metric][metric] = exp_before
+                #
+                #     if metric == 'exp': exp_after, per_group_exp_after = frt.Metrics.EXP(pd.DataFrame(data=reranked_idx[i][:k_max]), dict([(j, labels[j]) for j in reranked_idx[i][:k_max]]), 'MinMaxRatio')
+                #         # dic_after[metric]['protected'].append(per_group_exp_after[False]), dic_after[metric]['nonprotected'].append(per_group_exp_after[True])
+                #         # dic_after[metric][metric] = exp_after
+                #     elif metric == 'expu': exp_after, per_group_exp_after = frt.Metrics.EXPU(pd.DataFrame(data=reranked_idx[i][:k_max]), dict([(j, labels[j]) for j in reranked_idx[i][:k_max]]), pd.DataFrame(data=[j[2] for i in reranked_idx[i][:k_max] for j in member_probs if j[0] == i]), 'MinMaxRatio')
+                #         # dic_after[metric]['protected'].append(per_group_exp_after[False]), dic_after[metric]['nonprotected'].append(per_group_exp_after[True])
+                #         # dic_after[metric][metric] = exp_after
+                #
+                #     try: after[metric]['protected'].append(per_group_exp_after[False])
+                #     except KeyError: after[metric]['protected'].append(0)
+                #     try:  after[metric]['nonprotected'].append(per_group_exp_after[True])
+                #     except KeyError:  after[metric]['nonprotected'].append(0)
+                #     after[metric][metric] = exp_after
+            results.append(result)
+        df = pd.DataFrame(results)
+        if per_instance: df.to_csv(f'{reranked_file}.eval.fair.instance.csv', index=False)
+        df.mean(axis=0).to_frame(name='mean').rename_axis('metric').to_csv(f'{reranked_file}.eval.fair.mean.csv')
+        log.info(f'Metric values saved at {reranked_file}.eval.fair.mean{"/instance" if per_instance else ""}.csv.')
 
     @staticmethod
     def eval_utility(teamsvecs_members, reranked_preds, fpred, preds, splits, metrics, output, algorithm, k_max, alpha,  att: str = 'popularity', popularity_thresholding: str ='avg' ) -> None:
@@ -260,31 +249,30 @@ class Adila:
         df_mean_after.rename(columns={'mean': 'mean.after'}, inplace=True)
         pd.concat([df_mean_before, df_mean_after], axis=1).to_csv(f'{output}.{algorithm}.{popularity_thresholding+"." if att=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "")+"." if algorithm=="fa-ir" else ""}{k_max}.utileval.csv', index_label='metric')
 
-
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
     opentf.set_seed(cfg.seed)
-
-    adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender, cfg.data.output, cfg.fair.notion, cfg.fair.attribute, cfg.fair.is_popular_alg)
+    adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender, cfg.data.output, cfg.fair.notion, cfg.fair.attribute, cfg.fair.is_popular_alg)
     stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
-
     # creating a static ratio in case fairness_notion is 'dp' and hard ratio is set
     if cfg.fair.notion == 'dp' and cfg.fair.dp_ratio: ratios = [1 - cfg.fair.ratio if cfg.fair.attribute == 'popularity' else cfg.fair.ratio]
 
+    if os.path.isfile(cfg.data.fpreds):
+        preds, reranked_preds, reranked_file = adila.rerank(cfg.data.fpreds, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
+        adila.eval_fair(preds, minorities, reranked_preds, reranked_file, ratios, cfg.fair.k_max, cfg.eval.fair_metrics, cfg.eval.per_instance)
 
-    if os.path.isfile(cfg.data.fpreds): reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
-
-
-    # for algorithm in ['det_greedy', 'det_relaxed', 'det_const_sort', 'fa-ir', 'det_cons']:
+    # for algorithm in ['fa-ir', 'det_greedy', 'det_relaxed', 'det_const_sort', 'det_cons']:
     #     for notion in ['eo', 'dp']:
     #         for attribute in ['popularity', 'gender']:
     #             for is_popular_alg in ['avg', 'auc']:
-    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fpreds, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
+    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
     #                 stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
     #                 if os.path.isfile(cfg.data.fpreds):
     #                     # try:
-    #                         reranked_preds = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
-    #                     # except Exception as e:
+    #                         preds, reranked_preds, reranked_file = adila.rerank(cfg.data.fpreds, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
+    #                         adila.eval_fair(preds, minorities, reranked_preds, reranked_file, ratios, cfg.fair.k_max, cfg.eval.fair_metrics, cfg.eval.per_instance)
+    #
+    #                 # except Exception as e:
     #                     #     print(e)
 
     # if os.path.isdir(cfg.data.fpreds):
@@ -336,7 +324,6 @@ def run(cfg) -> None:
     #
     # print(f'Pipeline for the baseline {fpred} completed by {multiprocessing.current_process()}! {time() - st}')
     # print('#'*100)
-
 
 if __name__ == '__main__': run()
 
