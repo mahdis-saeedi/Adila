@@ -1,4 +1,4 @@
-metric,mean
+metrics,mean
 before.ndkl,0.31351795352047696
 after.ndkl,0.14496166363571092
 before.skew.minority,-9.45312183638034
