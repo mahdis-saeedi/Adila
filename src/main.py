@@ -280,11 +280,13 @@ class Adila:
         if per_instance: df_before.rename(columns={c: f'{c}.before' for c in df_before.columns}, inplace=True)
         df_before_mean.rename(columns={'mean': 'mean.before'}, inplace=True)
 
+        log.info(f'After: Evaluating {fpred_} ...')
         df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, preds, topK)
         if per_instance: df_after.rename(columns={c: f'{c}.after' for c in df_after.columns}, inplace=True)
         df_after_mean.rename(columns={'mean': 'mean.after'}, inplace=True)
         if per_instance: pd.concat([df_before, df_after], axis=1).to_csv(f'{fpred_}.eval.utility.instance.csv', float_format='%.5f', index=False)
         pd.concat([df_before_mean, df_after_mean], axis=1).to_csv(f'{fpred_}.eval.utility.mean.csv', index_label='metric')
+        log.info(f'After: Saved at {fpred_}.eval.utility.mean.csv.')
 
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
