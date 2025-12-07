@@ -288,29 +288,24 @@ def run(cfg) -> None:
         adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
         adila.eval_utility(preds, cfg.data.fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
 
-    for algorithm in ['fa-ir', 'det_greedy', 'det_relaxed', 'det_const_sort', 'det_cons']:
-        for notion in ['eo', 'dp']:
-            for attribute in ['popularity', 'gender']:
-                for is_popular_alg in ['avg', 'auc']:
-                    adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
-                    stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
-                    if os.path.isfile(cfg.data.fpred):
-                        try:
-                            preds, preds_, fpred_ = adila.rerank(cfg.data.fpred, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
-                            adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
-                            adila.eval_utility(preds, cfg.data.fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
-                        except Exception as e: print(e)
+    # ## bruteforce
+    # for algorithm in ['fa-ir', 'det_greedy', 'det_relaxed', 'det_const_sort', 'det_cons']:
+    #     for notion in ['eo', 'dp']:
+    #         for attribute in ['popularity', 'gender']:
+    #             for is_popular_alg in ['avg', 'auc']:
+    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
+    #                 stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
+    #                 if os.path.isfile(cfg.data.fpred):
+    #                     try:
+    #                         preds, preds_, fpred_ = adila.rerank(cfg.data.fpred, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
+    #                         adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
+    #                         adila.eval_utility(preds, cfg.data.fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
+    #                     except Exception as e: log.info(f'{opentf.textcolor["red"]}{e}{opentf.textcolor["reset"]}')
 
-if __name__ == '__main__': run()
-
-
-#########
-# parallel run for multiple files in a subfolder *.pred
-
-    # if os.path.isdir(cfg.data.fpreds):
+    # if os.path.isdir(cfg.data.fpred):
     #     # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
     #     files = list()
-    #     for dirpath, dirnames, filenames in os.walk(cfg.data.fpreds): files += [os.path.join(os.path.normpath(dirpath), file).split(os.sep) for file in filenames if file.endswith("pred") and 'rerank' not in file]
+    #     for dirpath, dirnames, filenames in os.walk(cfg.data.fpred): files += [os.path.join(os.path.normpath(dirpath), file).split(os.sep) for file in filenames if file.endswith("pred") and 'rerank' not in file]
     #
     #     files = pd.DataFrame(files, columns=['.', '..', 'domain', 'baseline', 'setting', 'rfile'])
     #     address_list = list()
@@ -325,16 +320,8 @@ if __name__ == '__main__': run()
     #         with multiprocessing.Pool(multiprocessing.cpu_count() if params.settings['core'] < 0 else params.settings['core']) as executor:
     #             executor.starmap(partial(Reranking.run,
     #                                      fsplits=args.fsplits,
-    #                                      fairness_notion=args.fairness_notion,
-    #                                      att=args.att,
-    #                                      fgender=args.fgender,
-    #                                      algorithm=args.algorithm,
-    #                                      k_max=params.settings['fair']['k_max'],
-    #                                      alpha=params.settings['fair']['alpha'],
-    #                                      np_ratio=params.settings['fair']['np_ratio'],
-    #                                      popularity_thresholding=params.settings['fair']['popularity_thresholding'],
-    #                                      fairness_metrics=params.settings['fair']['metrics'],
-    #                                      fteamsvecs=args.fteamsvecs,
-    #                                      utility_metrics=params.settings['utility_metrics']), pairs)
+    #                                      ), pairs)
+if __name__ == '__main__': run()
+
     #
 
