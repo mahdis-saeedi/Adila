@@ -271,7 +271,7 @@ class Adila:
         df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, preds, topK)
         if per_instance: df_after.rename(columns={c: f'{c}.after' for c in df_after.columns}, inplace=True)
         df_after_mean.rename(columns={'mean': 'mean.after'}, inplace=True)
-        if per_instance: pd.concat([df_before, df_after], axis=1).to_csv(f'{fpred_}.eval.utility.instance.csv', float_format='%.5f', index=False)
+        if per_instance: pd.concat([df_before.reset_index(drop=True), df_after.reset_index(drop=True)], axis=1).to_csv(f'{fpred_}.eval.utility.instance.csv', float_format='%.5f', index=False)
         pd.concat([df_before_mean, df_after_mean], axis=1).to_csv(f'{fpred_}.eval.utility.mean.csv', index_label='metric')
         log.info(f'After: Saved at {fpred_}.eval.utility.mean.csv.')
 
