@@ -246,19 +246,7 @@ class Adila:
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
             Y_ = Y_.to_dense().numpy()
             df, df_mean = pd.DataFrame(), pd.DataFrame()
-            if metrics.trec:
-                log.info(f'{metrics.trec} ...')
-                df, df_mean = evl.calculate_metrics(Y, Y_, topK, per_instance, metrics.trec)
-
-            if (m := [m for m in metrics.other if 'skill_coverage' in m]):  # since this metric comes with topks str like 'skill_coverage_2,5,10'
-                log.info(f'{m} ...')
-                df_skc, df_mean_skc = evl.calculate_skill_coverage(self.teamsvecs['skill'][self.splits['test']], Y_, self.teamsvecs['skillcoverage'], per_instance, topks=m[0].replace('skill_coverage_', ''))
-                if df.empty: df = df_skc
-                else:
-                    df_skc.columns = df.columns;
-                    df = pd.concat([df, df_skc], axis=0)
-                if df_mean.empty: df_mean = df_mean_skc
-                else: df_mean = pd.concat([df_mean, df_mean_skc], axis=0)
+            if metrics.trec: df, df_mean = evl.calculate_metrics(Y, Y_, topK, per_instance, metrics.trec)
             return df, df_mean
 
         Y = self.teamsvecs['member'][self.splits['test']]
@@ -272,7 +260,6 @@ class Adila:
         except FileNotFoundError:
             log.info(f'Before: Loading {fpred}.eval.mean.csv failed! Evaluating from scratch ...')
             df_before, df_before_mean = _evaluate(preds, metrics, per_instance, preds, topK)
-
             if per_instance: df_before.to_csv(f'{fpred}.eval.instance.csv', float_format='%.5f', index=False)
             log.info(f'Before: Saving {fpred}.eval.mean.csv ...')
             df_before_mean.to_csv(f'{fpred}.eval.mean.csv')

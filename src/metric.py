@@ -5,8 +5,8 @@ import pkgmgr as opentf
 def calculate_metrics(Y, Y_, topK=None, per_instance=False, metrics=['P_2,5', 'recall_2,5', 'ndcg_cut_2,5']):
     pd = opentf.install_import('pandas')
     tqdm = opentf.install_import('tqdm', from_module='tqdm')
-    # pytrec_eval = opentf.install_import('pytrec-eval-terrier', 'pytrec_eval')
-    import pytrec_eval
+    pytrec_eval = opentf.install_import('pytrec-eval-terrier', 'pytrec_eval')
+    # import pytrec_eval
     qrel = dict(); run = dict()
     log.info(f'Building pytrec_eval input for {Y.shape[0]} instances ...')
     k = min(topK, Y_.shape[1]) if topK else Y_.shape[1] #first stage topK for efficiency in space and speed
