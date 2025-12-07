@@ -141,11 +141,11 @@ After successful run of all steps, [`./output`](./output) contains:
                         │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.rerank.{csv,pred}
                         │   │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.utileval.csv
                         │   ├── eo
+                        │   │   ├── ratios.pkl
                         │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.{ndkl,skew}.faireval.csv
                         │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.rerank.{csv,pred}
                         │   │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.utileval.csv
                         │   ├── labels.csv
-                        │   ├── ratios.pkl
                         │   └── stats.pkl
                         └── popularity
                             ├── dp
@@ -153,11 +153,11 @@ After successful run of all steps, [`./output`](./output) contains:
                             │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.rerank.{csv,pred}
                             │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.utileval.csv
                             ├── eo
+                            │   ├── ratios.pkl
                             │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.{ndkl,skew}.faireval.csv
                             │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.rerank.{csv,pred}
                             │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.utileval.csv
                             ├── labels.csv
-                            ├── ratios.pkl
                             └── stats.pkl
 
 ```
