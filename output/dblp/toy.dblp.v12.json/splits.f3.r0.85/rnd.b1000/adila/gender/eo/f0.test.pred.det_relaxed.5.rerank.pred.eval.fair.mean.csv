@@ -1,0 +1,7 @@
+metrics,mean
+before.ndkl,0.27545551046954364
+after.ndkl,0.4573038295251425
+before.skew.minority,-5.376060816709623
+before.skew.majority,0.08435927710474064
+after.skew.minority,-0.17174417600973538
+after.skew.majority,0.03973056684194866

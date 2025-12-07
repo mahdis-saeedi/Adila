@@ -1,0 +1,16 @@
+metrics,mean
+P_1,0.2
+P_2,0.2
+P_5,0.12000000000000002
+recall_1,0.1
+recall_2,0.2
+recall_5,0.3
+ndcg_cut_1,0.2
+ndcg_cut_2,0.2
+ndcg_cut_5,0.25281362451451816
+map_cut_1,0.1
+map_cut_2,0.15
+map_cut_5,0.175
+success_1,0.2
+success_2,0.4
+success_5,0.6

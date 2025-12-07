@@ -1,0 +1,82 @@
+name: tests-rnd
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  test-toy-configs:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'skip-ci') }}
+
+    strategy:
+      matrix:
+        include:
+
+          - config: '+id=000 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=001 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=002 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=002 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=003 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=popularity fair.is_popular_alg=avg'
+
+          - config: '+id=005 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=006 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=007 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=007 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+          - config: '+id=008 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=popularity fair.is_popular_alg=avg'
+
+          - config: '+id=009 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=010 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=011 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=011 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=012 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=popularity fair.is_popular_alg=auc'
+
+          - config: '+id=013 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=014 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=015 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=015 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+          - config: '+id=016 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=popularity fair.is_popular_alg=auc'
+
+          - config: '+id=017 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=eo fair.attribute=gender'
+          - config: '+id=018 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=eo fair.attribute=gender'
+          - config: '+id=019 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=eo fair.attribute=gender'
+          - config: '+id=019 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=eo fair.attribute=gender'
+          - config: '+id=020 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=eo fair.attribute=gender'
+
+          - config: '+id=021 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=fa-ir fair.notion=dp fair.attribute=gender'
+          - config: '+id=022 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_greedy fair.notion=dp fair.attribute=gender'
+          - config: '+id=023 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_relaxed fair.notion=dp fair.attribute=gender'
+          - config: '+id=023 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_cons fair.notion=dp fair.attribute=gender'
+          - config: '+id=024 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred fair.algorithm=det_const_sort fair.notion=dp fair.attribute=gender'
+
+      # Set to false if you want parallel runs:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Clean up previous outputs
+        run: rm -rf output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/
+
+      - name: Echo config index
+        run: |
+          echo 'Config index: ${{ matrix.index }}'
+
+      - name: Run config ${{ matrix.config }}
+        run: |
+          python main.py ${{ matrix.config }}
+        working-directory: ./src
+        continue-on-error: ${{ matrix.label == 'fail.validate' }}
+
