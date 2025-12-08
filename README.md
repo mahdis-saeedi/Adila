@@ -1,5 +1,5 @@
 # ``Adila``<sup>*</sup>: Fairness-Aware Team Recommendation 
-![Python Version](https://img.shields.io/badge/python-3.8-blue) [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![All Tests](https://img.shields.io/github/check-runs/fani-lab/Adila/main)](https://github.com/fani-lab/Adila/actions)
+![Python Version](https://img.shields.io/badge/python-3.8-blue) [![license: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![All Tests](https://img.shields.io/github/check-runs/fani-lab/Adila/main)](https://github.com/fani-lab/Adila/actions)
 
 <sup>*[ عادلة, feminine Arabic given name, meaning just and fair](https://en.wikipedia.org/wiki/Adila_(name))<sup>
 
