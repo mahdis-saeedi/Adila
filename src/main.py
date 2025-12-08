@@ -1,12 +1,8 @@
 import os, pickle, logging, multiprocessing, random
 log = logging.getLogger(__name__)
-
 import hydra
-# from time import time, perf_counter
-# from functools import partial
-# from random import randrange
-
 #from util.fair_greedy import fairness_greedy
+
 import pkgmgr as opentf, plot
 
 pd = opentf.install_import('pandas')
@@ -275,6 +271,17 @@ class Adila:
         pd.concat([df_before_mean, df_after_mean], axis=1).to_csv(f'{fpred_}.eval.utility.mean.csv', index_label='metric')
         log.info(f'After: Saved at {fpred_}.eval.utility.mean.csv.')
 
+def __(fpred, adila, minorities, ratios, cfg):
+    preds, preds_, fpred_ = adila.rerank(fpred, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
+    adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
+    adila.eval_utility(preds, fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
+
+def _(adila, minorities, ratios, cfg):
+    if os.path.isfile(cfg.data.fpred): __(adila, cfg.data.fpred, minorities, ratios, cfg)
+    elif os.path.isdir(cfg.data.fpred):
+        import glob; from functools import partial
+        with multiprocessing.Pool(multiprocessing.cpu_count() - 1 if cfg.acceleration == 'cpu' else int(cfg.acceleration.split(':')[1])) as p: p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, cfg=cfg), glob.glob(f'{cfg.data.fpred}*.pred'))
+
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
     opentf.set_seed(cfg.seed)
@@ -282,45 +289,8 @@ def run(cfg) -> None:
     stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
     # creating a static ratio in case fairness_notion is 'dp' and hard ratio is set
     if cfg.fair.notion == 'dp' and cfg.fair.dp_ratio: ratios = [1 - cfg.fair.ratio if cfg.fair.attribute == 'popularity' else cfg.fair.ratio]
+    _(adila, minorities, ratios, cfg)
 
-    if os.path.isfile(cfg.data.fpred):
-        preds, preds_, fpred_ = adila.rerank(cfg.data.fpred, minorities, ratios, cfg.fair.algorithm, cfg.fair.k_max, cfg.fair.alpha)
-        adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
-        adila.eval_utility(preds, cfg.data.fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
-
-    # ## bruteforce
-    # for algorithm in ['fa-ir', 'det_greedy', 'det_relaxed', 'det_const_sort', 'det_cons']:
-    #     for notion in ['eo', 'dp']:
-    #         for attribute in ['popularity', 'gender']:
-    #             for is_popular_alg in ['avg', 'auc']:
-    #                 adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender, cfg.data.output, notion, attribute, is_popular_alg)
-    #                 stats, minorities, ratios = adila.prep(cfg.fair.is_popular_coef)
-    #                 if os.path.isfile(cfg.data.fpred):
-    #                     try:
-    #                         preds, preds_, fpred_ = adila.rerank(cfg.data.fpred, minorities, ratios, algorithm, cfg.fair.k_max, cfg.fair.alpha)
-    #                         adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
-    #                         adila.eval_utility(preds, cfg.data.fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
-    #                     except Exception as e: log.info(f'{opentf.textcolor["red"]}{e}{opentf.textcolor["reset"]}')
-
-    # if os.path.isdir(cfg.data.fpred):
-    #     # given a root folder, we can crawl the folder to find *.pred files and run the pipeline for all
-    #     files = list()
-    #     for dirpath, dirnames, filenames in os.walk(cfg.data.fpred): files += [os.path.join(os.path.normpath(dirpath), file).split(os.sep) for file in filenames if file.endswith("pred") and 'rerank' not in file]
-    #
-    #     files = pd.DataFrame(files, columns=['.', '..', 'domain', 'baseline', 'setting', 'rfile'])
-    #     address_list = list()
-    #
-    #     pairs = []
-    #     for i, row in files.iterrows():
-    #         output = f"{row['.']}/{row['..']}/{row['domain']}/{row['baseline']}/{row['setting']}/"
-    #         pairs.append((f'{output}{row["rfile"]}', f'{output}rerank/'))
-    #
-    #     if params.settings['parallel']:
-    #         print(f'Parallel run started ...')
-    #         with multiprocessing.Pool(multiprocessing.cpu_count() if params.settings['core'] < 0 else params.settings['core']) as executor:
-    #             executor.starmap(partial(Reranking.run,
-    #                                      fsplits=args.fsplits,
-    #                                      ), pairs)
 if __name__ == '__main__': run()
 
     #

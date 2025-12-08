@@ -4,14 +4,14 @@ hydra:
     dir: . #unix or macos
     #dir: /dev/null # windows
 seed: 0
-acceleration: 'cpu' #cpu for all cores minus one, cpu:3 for 3 cores, 'cuda' or 'cuda:0' for the only available gpu, 'cuda:3' for gpu3 >> TODO: multiple gpus
-
+acceleration: 'cpu' #cpu for all cores minus one, cpu:3 for 3 cores
 data:
   fteamsvecs: ../output/dblp/toy.dblp.v12.json/teamsvecs.pkl
-  fgender: ../output/dblp/toy.dblp.v12.json/females.csv
-  fsplits: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85.pkl
-  fpred: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred # can be a single file like f0.test.pred or a subfolder containing *.pred
-  output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
+  fgender:    ../output/dblp/toy.dblp.v12.json/females.csv
+  fsplits:    ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85.pkl
+  fpred:      ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ # a subfolder containing *.pred
+  #fpred:      ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred # or a single file like f0.test.pred
+  output:     ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
 
 fair: #post-hoc reranks of the prediction list
   algorithm: det_greedy #reranking algorithm from {det_greedy, det_cons, det_relaxed, det_const_sort, fa-ir}; required; Eg. det_cons
