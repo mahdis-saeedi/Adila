@@ -277,7 +277,7 @@ def __(fpred, adila, minorities, ratios, cfg):
     adila.eval_utility(preds, fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
 
 def _(adila, minorities, ratios, cfg):
-    if os.path.isfile(cfg.data.fpred): __(adila, cfg.data.fpred, minorities, ratios, cfg)
+    if os.path.isfile(cfg.data.fpred): __(cfg.data.fpred, adila, minorities, ratios, cfg)
     elif os.path.isdir(cfg.data.fpred):
         import glob; from functools import partial
         with multiprocessing.Pool(multiprocessing.cpu_count() - 1 if cfg.acceleration == 'cpu' else int(cfg.acceleration.split(':')[1])) as p: p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, cfg=cfg), glob.glob(f'{cfg.data.fpred}*.pred'))
