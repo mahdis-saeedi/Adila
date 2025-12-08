@@ -17,4 +17,5 @@ numpy==1.24.4
 #$ matplotlib-inline==0.1.6
 #$ seaborn
 
+#$ evl.metric==0.0.0@https://raw.githubusercontent.com/fani-lab/OpeNTF/refs/heads/main/src/evl/metric.py
 #$ pytrec-eval-terrier==0.5.2

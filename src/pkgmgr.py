@@ -12,6 +12,9 @@ def is_version_equal(inst_ver: str, req_ver: str) -> bool:
 
 def install_pkg(pkg_name):
     log.info(f'Installing {pkg_name}...')
+    if pkg_req_dict[pkg_name][0].find('@https://raw.githubusercontent.com/') > -1 and pkg_req_dict[pkg_name][0].endswith('.py'):
+        wget_import(pkg_name, pkg_req_dict[pkg_name][0].split('@')[1])
+        return
     process = subprocess.run([sys.executable, '-m', 'pip', 'install'] + pkg_req_dict[pkg_name][0].split(), text=True, capture_output=True)#-m makes the pip to work as module inside env, not the system pip!
     log.info(process.stdout)
     if process.returncode != 0: raise ImportError(f'Failed to install package: {pkg_name}\n{process.stderr}')
@@ -36,7 +39,7 @@ def install_import(pkg_name, import_path=None, from_module=None):
     import_path = import_path or pkg_name
     try: 
         module = importlib.import_module(import_path)
-        if(not is_version_equal(version(pkg_name), pkg_req_dict[pkg_name][1])):
+        if(pkg_req_dict[pkg_name][1] != '0.0.0' and not is_version_equal(version(pkg_name), pkg_req_dict[pkg_name][1])):
             log.info(f'{textcolor["yellow"]}Version mismatch detected. {pkg_name} version {version(pkg_name)} is installed, but {pkg_req_dict[pkg_name][1]} is required.{textcolor["reset"]}')
             reinstall_pkg(pkg_name)
             module = importlib.import_module(import_path)
@@ -48,17 +51,17 @@ def install_import(pkg_name, import_path=None, from_module=None):
 
     if from_module: return getattr(module, from_module)
     return module
+
+# no caching across processes when multiprocessing.pool(), so each process one web get if package not found!
 def wget_import(import_path, url):# url = "https://raw.githubusercontent.com/username/other-repo/main/mymodule.py"
-    try: return importlib.import_module(import_path)
-    except ImportError: pass
     import sys, urllib.request, tempfile, os
     with urllib.request.urlopen(url) as f: source_code = f.read().decode("utf-8")
     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".py") as temp_file:
         temp_file.write(source_code)
         temp_path = temp_file.name
-    module_name = os.path.splitext(os.path.basename(url))[0]
+    module_name = import_path #os.path.splitext(os.path.basename(url))[0]
     spec = importlib.util.spec_from_file_location(module_name, temp_path)
-    if spec is None: raise ImportError(f'Could not create spec for module {module_name} from {url}')
+    if spec is None: raise ImportError(f'Failed to import module {module_name} from {url}')
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
@@ -85,7 +88,7 @@ def get_req_dict(req_file):
 
         out = []
         for pkg in re.findall(f"{package_name}[\s]*{comp}[\s]*{ver_num}", line):
-            if '@git+https://github.com/' in line: line = line.replace('==' + pkg[2], '') # 'fairsearchcore==1.0.4@git...' >> fairsearchcore@git...
+            if '@' in line: line = line.replace('==' + pkg[2], '') # 'fairsearchcore==1.0.4@git...' >> fairsearchcore@git...
             out.append((pkg[0], (line, pkg[2])))
         return out # [(package_name, (line, ver_num)), ...])]
     

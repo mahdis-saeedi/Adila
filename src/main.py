@@ -1,4 +1,4 @@
-import os, pickle, logging, multiprocessing, random
+import os, pickle, logging, multiprocessing
 log = logging.getLogger(__name__)
 import hydra
 #from util.fair_greedy import fairness_greedy
@@ -238,12 +238,14 @@ class Adila:
         """
 
         def _evaluate(Y_, metrics, per_instance, topK):
-            # evl = opentf.wget_import('metric_', None)
-            evl = opentf.wget_import('metric', 'https://raw.githubusercontent.com/fani-lab/OpeNTF/refs/heads/main/src/evl/metric.py')
+            df, df_mean = pd.DataFrame(), pd.DataFrame()
+            if not (metrics.trec or metrics.other): df, df_mean
+            # evl = opentf.install_import('evl.metric', 'metric_')
+            evl = opentf.install_import('evl.metric')
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
             Y_ = Y_.to_dense().numpy()
-            df, df_mean = pd.DataFrame(), pd.DataFrame()
             if metrics.trec: df, df_mean = evl.calculate_metrics(Y, Y_, topK, per_instance, metrics.trec)
+            if metrics.other: pass
             return df, df_mean
 
         Y = self.teamsvecs['member'][self.splits['test']]
@@ -277,11 +279,19 @@ def __(fpred, adila, minorities, ratios, cfg):
     adila.eval_fair(preds, minorities, preds_, fpred_, ratios, cfg.eval.topK, cfg.eval.fair_metrics, cfg.eval.per_instance)
     adila.eval_utility(preds, fpred, preds_, fpred_, cfg.eval.topK, cfg.eval.utility_metrics, cfg.eval.per_instance)
 
+def init_process(): logging.basicConfig(level=logging.INFO)
+
 def _(adila, minorities, ratios, cfg):
     if os.path.isfile(cfg.data.fpred): __(cfg.data.fpred, adila, minorities, ratios, cfg)
     elif os.path.isdir(cfg.data.fpred):
         import glob; from functools import partial
-        with multiprocessing.Pool(multiprocessing.cpu_count() - 1 if cfg.acceleration == 'cpu' else int(cfg.acceleration.split(':')[1])) as p: p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, cfg=cfg), glob.glob(f'{cfg.data.fpred}*.pred'))
+        fpreds = glob.glob(f'{cfg.data.fpred}*.pred')
+        n_processes = multiprocessing.cpu_count() - 1 if cfg.acceleration == 'cpu' else int(cfg.acceleration.split(':')[1])
+        if n_processes < 2:
+            for fpred in fpreds: __(fpred, adila, minorities, ratios, cfg)
+        else:
+            with multiprocessing.Pool(initializer=init_process, processes=n_processes) as p:
+                p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, cfg=cfg), fpreds)
 
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
