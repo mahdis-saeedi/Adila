@@ -237,8 +237,9 @@ class Adila:
             None but the results are stored in *.csv files
         """
 
-        def _evaluate(Y_, metrics, per_instance, preds, topK):
-            import metric as evl
+        def _evaluate(Y_, metrics, per_instance, topK):
+            # import metric_ as evl
+            evl = opentf.wget_import('metric', 'https://raw.githubusercontent.com/fani-lab/OpeNTF/refs/heads/main/src/evl/metric.py')
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
             Y_ = Y_.to_dense().numpy()
             df, df_mean = pd.DataFrame(), pd.DataFrame()
@@ -255,7 +256,7 @@ class Adila:
             if per_instance: df_before = pd.read_csv(f'{fpred}.eval.instance.csv', header=0)
         except FileNotFoundError:
             log.info(f'Before: Loading {fpred}.eval.mean.csv failed! Evaluating from scratch ...')
-            df_before, df_before_mean = _evaluate(preds, metrics, per_instance, preds, topK)
+            df_before, df_before_mean = _evaluate(preds, metrics, per_instance, topK)
             if per_instance: df_before.to_csv(f'{fpred}.eval.instance.csv', float_format='%.5f', index=False)
             log.info(f'Before: Saving {fpred}.eval.mean.csv ...')
             df_before_mean.to_csv(f'{fpred}.eval.mean.csv')
@@ -264,7 +265,7 @@ class Adila:
         df_before_mean.rename(columns={'mean': 'mean.before'}, inplace=True)
 
         log.info(f'After: Evaluating {fpred_} ...')
-        df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, preds, topK)
+        df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, topK)
         if per_instance: df_after.rename(columns={c: f'{c}.after' for c in df_after.columns}, inplace=True)
         df_after_mean.rename(columns={'mean': 'mean.after'}, inplace=True)
         if per_instance: pd.concat([df_before.reset_index(drop=True), df_after.reset_index(drop=True)], axis=1).to_csv(f'{fpred_}.eval.utility.instance.csv', float_format='%.5f', index=False)
@@ -292,6 +293,3 @@ def run(cfg) -> None:
     _(adila, minorities, ratios, cfg)
 
 if __name__ == '__main__': run()
-
-    #
-
