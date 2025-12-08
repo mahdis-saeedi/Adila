@@ -238,7 +238,7 @@ class Adila:
         """
 
         def _evaluate(Y_, metrics, per_instance, topK):
-            # import metric_ as evl
+            # evl = opentf.wget_import('metric_', None)
             evl = opentf.wget_import('metric', 'https://raw.githubusercontent.com/fani-lab/OpeNTF/refs/heads/main/src/evl/metric.py')
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
             Y_ = Y_.to_dense().numpy()
