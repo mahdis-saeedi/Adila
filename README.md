@@ -22,8 +22,8 @@ Currently, we are investigating:
 - [1. Setup](#1-setup)
 - [2. Quickstart](#2-quickstart)
 - [3. Pipeline](#3-pipeline)
-  * [3.1. Labeling](#31-labeling)
-  * [3.2. Gender Distribution](#32-gender)
+  * [3.1. Popularity](#31-popularity)
+  * [3.2. Gender](#32-gender)
   * [3.3. Reranking](#33-reranking)
   * [3.4. Evaluations](#34-evaluations)
 - [4. Acknowledgement](#4-acknowledgement)
@@ -65,7 +65,7 @@ The above run, loads member recommendations by the `random` model in [`OpeNTF`](
 ## 3. Pipeline
 <p align="center"><img src='./docs/flow.png' width="500" ></p>
  
-`Adila` needs preprocessed information about the teams in the form of sparse matrix representation (`-fteamsvecs`) and neural team formation prediction file(s) (`-fpred`), obtained from [`OpeNTF`](https://github.com/fani-lab/OpeNTF/tree/main):
+`Adila` needs preprocessed information about the teams in the form of sparse matrix representation (`data.fteamsvecs`) and neural team formation prediction file(s) (`data.fpred`), obtained from [`OpeNTF`](https://github.com/fani-lab/OpeNTF/tree/main):
 
 ```bash
 .
@@ -74,13 +74,11 @@ The above run, loads member recommendations by the `random` model in [`OpeNTF`](
 └── output
     └── dblp
         └── toy.dblp.v12.json
-            ├── gender.csv
-            ├── indexes.pkl
-            ├── splits.json
-            ├── teams.pkl
+            ├── females.csv
             ├── teamsvecs.pkl
-            └── bnn
-                └── t31.s11.m13.l[100].lr0.1.b4096.e20.s1
+            ├── splits.f3.r0.85.pkl
+            └── splits.f3.r0.85
+                └── rnd.b1000
                     ├── f0.test.pred
                     ├── f0.test.pred.eval.mean.csv
 ```
@@ -90,68 +88,87 @@ The above run, loads member recommendations by the `random` model in [`OpeNTF`](
 ### 3.1. Popularity
 <p align="center"><img src='./docs/bias_ecir_23/latex/figures/nteams_candidate-idx_.png' width="200" ></p>
 
-Based on the distribution of experts on teams, which is power law (long tail) as shown in the figure, we label those in the `tail` as `nonpopular` and those in the `head` as popular. To find the cutoff between `head` and `tail`, we calculate the `avg` number of teams per expert over the entire dataset, or based on equal area under the curve `auc`. The result is a Boolean value in `{popular: True, nonpopular: False}` for each expert and is save in `{output}/popularity.csv` like [`./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/popularity/labels.csv`](./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/popularity/labels.csv) 
+Based on the distribution of experts on teams, which is power law (long tail) as shown in the figure, we label those in the `tail` as `nonpopular` and those in the `head` as popular. To find the cutoff between `head` and `tail`, we calculate the `avg` number of teams per expert over the entire dataset, or based on equal area under the curve `auc`. The result is a set of expert ids for `popular` experts as the `minority` group and is save in `{data.output}/adila/popularity/labels.csv` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity/labels.csv`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity/labels.csv)
+
+> We treat `popularity` as the `protected attribute` but the `protected group` is the set of `non-popular` experts, who are the `majority`, as opposed to the `minority` popular experts.
  
 ### 3.2. Gender
-The following figures will demonstrate the gender distributions in `imdb`, `dblp` and `uspt`  datasets.
 <p align="center">
  <img src='./docs/imdb_nmembers_nteams_regular_edited.png' width="200" >
  <img src='./docs/dblp_nmembers_nteams_regular_edited.png' width="210" >
  <img src='./docs/uspt_nmembers_nteams_regular_edited.png' width="200" >
 </p>
+As seen in above figures for the training datasets `imdb`, `dblp` and `uspt` in team recommendation, gender distributions are highly bised toward majority `males` and unfair for `minority` `females`. We obtain gender labels for experts either from the original dataset or via `https://gender-api.com/` and `https://genderize.io/`, located at [`./output/dblp/toy.dblp.v12.json/females.csv`](./output/dblp/toy.dblp.v12.json/females.csv).
+
+> We treat `gender` as the `protected attribute` and the `protected group` is the set of `female` experts, who are the `minority`, as opposed to the `majarity` `male` experts. 
 
 ### 3.3. Reranking 
   
-We apply rerankers including `{'det_greedy', 'det_cons', 'det_relaxed', fa-ir}` to mitigate `populairty` and `gender` bias. The reranker needs a cutoff `k_max` which is set to `10` by default. 
+We apply rerankers including `{'det_greedy', 'det_cons', 'det_relaxed', fa-ir}` to mitigate `populairty` or `gender` bias. The reranker needs a cutoff [`fair.k_max`](https://github.com/fani-lab/Adila/blob/6a096272e209e7310b1a58db969c8180fb1ac673/src/__config__.yaml#L19). 
 
-The result of predictions after reranking is saved in `{output}/rerank/{gender, popularity}/{dp, eo}/{fpred}.{reranker}.{k_max}.rerank.pred` like [`./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.rerank.pred`](./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.rerank.pred).
+The result of predictions after reranking is saved in `{data.output}/adila/{fair.attribute: gender, popularity}/{fair.notion: dp, eo}/{data.fpred}.{fair.algorithm}.{fair.k_max}.rerank.pred` like [`/output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred`](/output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred).
 
 ### 3.4. Evaluations 
   
-We evaluate `fairness` and `utility` metrics `before` and `after` applying rerankers on team predictions to see whether re-ranking algorithms improve the fairness of models while maintaining their accuracy.
+We evaluate `fairness` and `utility` metrics `before` and `after` applying rerankers on team predictions to see whether re-ranking algorithms improve the fairness in team recommendations while maintaining their accuracy.
 
-> The result of `fairness` metrics `before` and `after` will be stored in `{output}/rerank/{gender, popularity}/{dp, eo}/{fpred}.{reranker}.{k_max}.{ndkl,skew}.{faireval}.csv` like [`./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.ndkl.faireval.csv`](./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.ndkl.faireval.csv) .
+> The result of `fairness` metrics `before` and `after` will be stored in `{data.output}/adila/{fair.attribute: gender, popularity}/{fair.notion: dp, eo}/{data.fpred}.{fair.algorithm}.{fair.k_max}.rerank.pred.eval.fair.{instance, mean}.csv` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred.eval.fair.mean.csv`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred.eval.fair.mean.csv).
     
-> The result of `utility` metrics `before` and `after` will be stored in `{output}/rerank/{gender, popularity}/{dp, eo}/{fpred}.{reranker}.{k_max}.{utileval}.csv` like [`./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.utileval.csv`](./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/rerank/gender/dp/f0.test.pred.det_cons.10.utileval.csv).
+> The result of `utility` metrics `before` and `after` will be stored in `{data.output}/adila/{fair.attribute: gender, popularity}/{fair.notion: dp, eo}/{data.fpred}.{fair.algorithm}.{fair.k_max}.rerank.pred.eval.utility.{instance, mean}.csv` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred.eval.utility.mean.csv`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/gender/dp/f0.test.pred.det_cons.5.rerank.pred.eval.utility.mean.csv).
    
-After successful run of all steps, [`./output`](./output) contains:
+After successful run of all steps, the `{data.output}` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/) contains:
 
 ```bash
-└── output
-    └── dblp
-        └── toy.dblp.v12.json
-            └── bnn
-                └── t31.s11.m13.l[100].lr0.1.b4096.e20.s1
-                    └── adila
-                        ├── gender
-                        │   ├── dp
-                        │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.{ndkl,skew}.faireval.csv
-                        │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.rerank.{csv,pred}
-                        │   │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.utileval.csv
-                        │   ├── eo
-                        │   │   ├── ratios.pkl
-                        │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.{ndkl,skew}.faireval.csv
-                        │   │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.rerank.{csv,pred}
-                        │   │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.10.utileval.csv
-                        │   ├── labels.csv
-                        │   └── stats.pkl
-                        └── popularity
-                            ├── dp
-                            │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.{ndkl,skew}.faireval.csv
-                            │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.rerank.{csv,pred}
-                            │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.utileval.csv
-                            ├── eo
-                            │   ├── ratios.pkl
-                            │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.{ndkl,skew}.faireval.csv
-                            │   ├── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.rerank.{csv,pred}
-                            │   └── f0.test.pred.{det_cons,det_greedy,det_relaxed,fa-ir}.{auc,avg}.10.utileval.csv
-                            ├── labels.csv
-                            └── stats.pkl
-
+.
+├── f0.test.pred
+├── f0.test.pred.eval.instance.csv
+├── f0.test.pred.eval.mean.csv
+├── adila
+│   ├── gender
+│   │   ├── dp
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   └── f0.test.pred.fa-ir.10.5.rerank.pred.eval.utility.mean.csv
+│   │   ├── eo
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.10.5.rerank.pred.eval.utility.mean.csv
+│   │   │   └── ratios.pkl
+│   │   ├── labels.csv
+│   │   └── stats.pkl
+│   ├── popularity
+│   │   ├── dp
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   └── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.mean.csv
+│   │   ├── eo
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.mean.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.instance.csv
+│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.mean.csv
+│   │   │   └── ratios.pkl
+│   │   ├── labels.csv
+│   │   └── stats.pkl
 ```
 
 ## 4. Acknowledgement
-We benefit from [``pytrec``](https://github.com/cvangysel/pytrec_eval), [``reranking``](https://github.com/yuanlonghao/reranking), and other libraries. We would like to thank the authors of these libraries and helpful resources.
+We benefit from [``reranking``](https://github.com/yuanlonghao/reranking) and [`fairsearchcore`](https://github.com/fair-search/fairsearch-fair-python), and other libraries. We would like to thank the authors of these libraries and helpful resources.
   
 ## 5. License
 ©2025. This work is licensed under a [CC BY-NC-SA 4.0](license.txt) license.
