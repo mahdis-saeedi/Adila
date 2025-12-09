@@ -29,50 +29,38 @@ Currently, we are investigating:
 - [4. Acknowledgement](#4-acknowledgement)
 - [5. License](#5-license)
 
-## 1. Setup & Quickstart
-`Adila` needs ``Python=3.8`` and others packages listed in [``requirements.txt``](requirements.txt). By ``pip``, clone the codebase and install the required packages:
+## 1. Setup
+`Adila` needs `Python >= 3.8` and installs required packages lazily and on-demand, i.e., as it goes through the steps of the pipeline, it installs a package if the package or the correct version is not available in the environment. For further details, refer to [``requirements.txt``](requirements.txt) and [``pkgmgr.py``](./src/pkgmgr.py). To set up an environment locally:
 
 ```sh
-git clone https://github.com/Fani-Lab/Adila
-cd Adila
+#python3.8
+python -m venv adila_venv
+source adila_venv/bin/activate #non-windows
+#adila_venv\Scripts\activate #windows
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 ## 2. Quickstart
-To run `Adila`, you can use [`./src/main.py`](./src/main.py):
 
 ```bash
 cd src
-python -u main.py \
-  -fteamsvecs ../output/dblp/toy.dblp.v12.json/teamsvecs.pkl \
-  -fsplit ../output/dblp/toy.dblp.v12.json/splits.json \
-  -fpred ../output/dblp/toy.dblp.v12.json/bnn/ \
-  -np_ratio 0.5 \
-  -reranker det_cons \
-  -output ../output/dblp/toy.dblp.v12.json/
+python main.py data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred \ # the recommended teams for the test set of size |test|×|experts|, to be reranked for fairness
+               data.fteamsvecs: ../output/dblp/toy.dblp.v12.json/teamsvecs.pkl \                    # the sparse 1-hot representation of all teams of size |dataset|×|skills| and |dataset|×|experts|
+               data.fgender: ../output/dblp/toy.dblp.v12.json/females.csv \                         # column indices of females (minority labels) in teamsvecs.pkl
+               data.fsplits: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85.pkl \                 # the splits information including the rowids of teams in the test and train sets
+               data.output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000 \            # output folder for the reranked version and respective eval files
+
+               fair.algorithm=fa-ir \       # fairness-aware reranker algorithm
+               fair.notion=eo \             # notion of fairness, equality of opportunity 
+               fair.attribute=gender \      # protected/sensitive attribute  
+
+               eval.fair_metrics: [ndkl, skew]                      # metrics to measure fairness of the original (before) vs. reranked (after) versions of recommendations 
+               eval.utility_metrics.trec: [P_topk, ndcg_cut_topk]   # metrics to measure accuracy of the original (before) vs. reranked (after) versions of recommendations 
+               eval.utility_metrics.topk='2,5,10'                   
 ```
 
-Where the arguments are:
-
-  > `fteamsvecs`: the sparse matrix representation of all teams in a pickle file, including the teams whose members are predicted in `--pred`. It should contain a dictionary of three `lil_matrix` with keys `[id]` of size `[#teams × 1]`, `[skill]` of size `[#teams × #skills]`, `[member]` of size `[#teams × #experts]`. Simply, each row of a metrix shows the occurrence vector of skills and experts in a team. For a toy example, try 
-  ```
-  import pickle
-  with open(./output/dblp/toy.dblp.v12.json/teamsvecs.pkl) as f: teams=pickle.load(f)
-  ```
-  
-  > `fsplit`: the split.json file that indicates the index (rowid) of teams whose members are predicted in `--pred`. For a toy example, see [`output/toy.dblp.v12.json/splits.json`](output/dblp/toy.dblp.v12.json/splits.json)  
-
-  > `fpred`: a file or folder that includes the prediction files of a neural team formation methods in the format of `torch.ndarray`. The file name(s) should be `*.pred` and the content is `[#test × #experts]` probabilities that shows the membership probability of an expert to a team in test set. For a toy example, try 
-  ```
-  import torch
-  torch.load(./output/dblp/toy.dblp.v12.json/bnn/t31.s11.m13.l[100].lr0.1.b4096.e20.s1/f0.test.pred)
-  ```     
-
-  > `np_ratio`: the desired `nonpopular` ratio among members of predicted teams after mitigation process by re-ranking algorithms. E.g., 0.5.
-  
-  > `reranker`: fairness-aware reranking algorithm from {`det_greedy`, `det_cons`, `det_relaxed`, `fa-ir`}. Eg. `det_cons`.  
-
-  > `output`: the path to the reranked predictions of members for teams, as well as, the teams' success and fairness evaluation `before` and `after` mitigation process.
+The above run, loads member recommendations by the `random` model in [`OpeNTF`](https://github.com/fani-lab/OpeNTF) for test teams of a tiny-size toy example dataset [``toy.dblp.v12.json``](https://github.com/fani-lab/OpeNTF/blob/main/data/dblp/toy.dblp.v12.json) from [``dblp``](https://originalstatic.aminer.cn/misc/dblp.v12.7z). Then, reranks the members for each team using the fairness algorithm `fa-ir` to provide `fair` distribution of experts based on their `gender` to mitigate bias toward the minority group, i.e., `females`. For a step-by-step guide and output trace, see our colab script [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/fani-lab/Adila/blob/main/quickstart.ipynb).
 
 ## 3. Pipeline
 <p align="center"><img src='./docs/flow.png' width="500" ></p>
