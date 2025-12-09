@@ -51,12 +51,12 @@ python main.py data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b
                data.fsplits: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85.pkl \                 # the splits information including the rowids of teams in the test and train sets
                data.output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000 \            # output folder for the reranked version and respective eval files
 
-               fair.algorithm=fa-ir \       # fairness-aware reranker algorithm
-               fair.notion=eo \             # notion of fairness, equality of opportunity 
-               fair.attribute=gender \      # protected/sensitive attribute  
+               "fair.algorithm=[fa-ir]" \       # fairness-aware reranker algorithm
+               "fair.notion=[eo]" \             # notion of fairness, equality of opportunity 
+               "fair.attribute=[gender]" \      # protected/sensitive attribute  
 
-               eval.fair_metrics: [ndkl, skew]                      # metrics to measure fairness of the original (before) vs. reranked (after) versions of recommendations 
-               eval.utility_metrics.trec: [P_topk, ndcg_cut_topk]   # metrics to measure accuracy of the original (before) vs. reranked (after) versions of recommendations 
+               "eval.fair_metrics=[ndkl,skew]"                      # metrics to measure fairness of the original (before) vs. reranked (after) versions of recommendations 
+               "eval.utility_metrics.trec=[P_topk,ndcg_cut_topk]"   # metrics to measure accuracy of the original (before) vs. reranked (after) versions of recommendations 
                eval.utility_metrics.topk='2,5,10'                   
 ```
 
