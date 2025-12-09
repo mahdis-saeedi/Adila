@@ -127,5 +127,6 @@ textcolor = {
     'yellow': '\033[93m',
     'red':    '\033[91m',
     'magenta':'\033[95m',
-    'reset':  '\033[0m'
+    'cyan':   '\033[96m',
+    'reset':  '\033[0m',
 }

@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - config: '+id=000 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred '
-          - config: '+id=001 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu:1'
-          - config: '+id=001 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu:3'
-          - config: '+id=001 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu'
+          - config: '+id=000 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred        "fair.algorithm=[fa-ir, det_greedy, det_relaxed, det_const_sort, det_cons]" "fair.notion=[eo,dp]" "fair.attribute=[gender, popularity]" "fair.is_popular_alg=[avg, auc]"'
+          - config: '+id=001 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu:1 "fair.algorithm=[fa-ir, det_greedy, det_relaxed, det_const_sort, det_cons]" "fair.notion=[eo,dp]" "fair.attribute=[gender, popularity]" "fair.is_popular_alg=[avg, auc]"'
+          - config: '+id=002 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu:3 "fair.algorithm=[fa-ir, det_greedy, det_relaxed, det_const_sort, det_cons]" "fair.notion=[eo,dp]" "fair.attribute=[gender, popularity]" "fair.is_popular_alg=[avg, auc]"'
+          - config: '+id=003 data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/ acceleration=cpu   "fair.algorithm=[fa-ir, det_greedy, det_relaxed, det_const_sort, det_cons]" "fair.notion=[eo,dp]" "fair.attribute=[gender, popularity]" "fair.is_popular_alg=[avg, auc]"'
 
       # Set to false if you want parallel runs:
       fail-fast: false
@@ -44,7 +44,7 @@ jobs:
 
       - name: Run config ${{ matrix.config }}
         run: |
-          python grid.py ${{ matrix.config }}
+          python main.py ${{ matrix.config }}
         working-directory: ./src
         continue-on-error: ${{ matrix.label == 'fail.validate' }}
 
