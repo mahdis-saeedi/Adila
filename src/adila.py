@@ -1,19 +1,15 @@
 import os, pickle, logging, multiprocessing
 log = logging.getLogger(__name__)
 
-import pkgmgr as opentf, plot
+import pkgmgr as opentf
 
 pd = opentf.install_import('pandas')
 tqdm = opentf.install_import('tqdm', from_module='tqdm')
-csr_matrix = opentf.install_import('scipy', 'scipy.sparse', from_module='csr_matrix')
 torch = opentf.install_import('torch')
 
 class Adila:
 
-    def __init__(self, fteamsvecs, fsplits, fgender, output, fair_notion='dp', attribute='popularity', is_popular_alg='avg'):
-        self.output = f'{output}/adila/{attribute}'
-        if not os.path.isdir(self.output): os.makedirs(self.output)
-        if not os.path.isdir(f'{self.output}/{fair_notion}'): os.makedirs(f'{self.output}/{fair_notion}')
+    def __init__(self, fteamsvecs, fsplits, fgender):
         if isinstance(fteamsvecs, dict): self.teamsvecs = fteamsvecs
         else:
             with open(fteamsvecs, 'rb') as f: self.teamsvecs = pickle.load(f)
@@ -21,12 +17,13 @@ class Adila:
         else:
             with open(fsplits, 'rb') as f: self.splits = pickle.load(f)
 
-        self.attribute = attribute
-        self.fair_notion = fair_notion
-        self.is_popular_alg = is_popular_alg
+        self.attribute = None
+        self.fair_notion = None
+        self.is_popular_alg = None
         self.fgender = fgender
         self.minorities = []
 
+    def __str__(self): return f'{self.attribute}.{self.fair_notion}.{self.is_popular_alg}'
     def _get_labeled_sorted_preds(self, preds, minorities):
         sorted_probs, sorted_indices = preds.sort(dim=1, descending=True)  # |Test| * |Experts|
         sorted_labels = (sorted_indices[..., None] == torch.tensor(minorities)).any(dim=-1)
@@ -37,7 +34,14 @@ class Adila:
         return torch.stack([sorted_indices, sorted_labels.to(sorted_indices.dtype), sorted_probs], dim=-1)
         # [[expertid, minority label, ranked prob], ...]
 
-    def prep(self, coef=1.0) -> tuple: #coefficient to calculate a threshold for popularity (e.g. if 1.5, threshold = 1.5 * average number of teams per expert)
+    def prep(self, output, fair_notion='dp', attribute='popularity', is_popular_alg='avg', coef=1.0, plot=None) -> tuple: #coefficient to calculate a threshold for popularity (e.g. if 1.5, threshold = 1.5 * average number of teams per expert)
+        self.output = f'{output}/adila/{attribute}'
+        if not os.path.isdir(self.output): os.makedirs(self.output)
+        if not os.path.isdir(f'{self.output}/{fair_notion}'): os.makedirs(f'{self.output}/{fair_notion}')
+        self.attribute = attribute
+        self.fair_notion = fair_notion
+        self.is_popular_alg = is_popular_alg
+
         try:
             log.info(f'Loading stats, ratios, and ids for minority experts ...')
             with open(f'{self.output}/stats.pkl', 'rb') as f: stats = pickle.load(f)
@@ -51,16 +55,15 @@ class Adila:
             col_sums = self.teamsvecs['member'].sum(axis=0)
 
             stats['nteams_expert-idx'] = {k: v for k, v in enumerate(sorted(col_sums.A1.astype(int), reverse=True))}
-            stats['*avg_nteams_expert'] = col_sums.mean()
-
-            x, y = zip(*enumerate(sorted(col_sums.A1.astype(int), reverse=True)))
-            stats['*auc_nteams_expert'] = plot.area_under_curve(x, y, 'expert-idx', 'nteams', show_plot=False)
-
-            threshold = coef * stats[f'*{self.is_popular_alg}_nteams_expert']
 
             # many nonpopular/male but few popular/female. So, we only keep popular/female idxes as minorities.
             # this should be the same for all baselines, so read once from the file at ./output/{domain}/{dataset}
-            if self.attribute == 'popularity': minorities = [expertidx for expertidx, nteam_expert in enumerate(col_sums.getA1()) if threshold <= nteam_expert] #rowid maps to columnid in teamvecs['member']
+            if self.attribute == 'popularity':
+                stats['*avg_nteams_expert'] = col_sums.mean()
+                x, y = zip(*enumerate(sorted(col_sums.A1.astype(int), reverse=True)))
+                if self.is_popular_alg == 'auc': stats['*auc_nteams_expert'] = plot.area_under_curve(x, y, 'expert-idx', 'nteams', show_plot=False)
+                threshold = coef * stats[f'*{self.is_popular_alg}_nteams_expert']
+                minorities = [expertidx for expertidx, nteam_expert in enumerate(col_sums.getA1()) if threshold <= nteam_expert] #rowid maps to columnid in teamvecs['member']
             elif self.attribute == 'gender': minorities = pd.read_csv(self.fgender).iloc[:, 0].tolist()
             stats['minority_ratio'] = len(minorities) / stats['*nexperts']
             with open(f'{self.output}/stats.pkl', 'wb') as f: pickle.dump(stats, f)
@@ -97,7 +100,7 @@ class Adila:
             fpred_: the filename for the saved reranked_preds
         """
         preds = torch.load(fpred, map_location='cpu')['y_pred']
-        log.info(f'{opentf.textcolor["blue"]}Reranking {fpred} using {algorithm} with {k_max} cutoff ...{opentf.textcolor["reset"]}')
+        log.info(f'Reranking {fpred} using {opentf.textcolor["blue"]}{algorithm} with {k_max} cutoff ...{opentf.textcolor["reset"]}')
         # preds = torch.tensor([[0.1, 0.5, 0.3, 0.4,  0.1, 0.8, 0.3]])
         fpred_ = f'{self.output}/{self.fair_notion}/{os.path.split(fpred)[-1]}.{algorithm}.{self.is_popular_alg + "." if self.attribute=="popularity" else ""}{f"{alpha:.2f}".replace("0.", "") + "." if algorithm=="fa-ir" else ""}{k_max}.rerank.pred'
         try:
@@ -243,7 +246,7 @@ class Adila:
             df, df_mean = pd.DataFrame(), pd.DataFrame()
             if not (metrics.trec or metrics.other): df, df_mean
             # evl = opentf.install_import('evl.metric', 'metric_')
-            evl = opentf.install_import('evl.metric')
+            evl = opentf.install_import('evl.metric', 'evl.metric')
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
             Y_ = Y_.to_dense().numpy()
             # from https://github.com/fani-lab/OpeNTF/blob/main/src/mdl/ntf.py#L59
@@ -252,37 +255,25 @@ class Adila:
                 df, df_mean = evl.calculate_metrics(Y, Y_, topK, per_instance, metrics.trec)
             if (m := [m for m in metrics.other if 'aucroc' in m]):
                 log.info(f'{m} ...')
-                aucroc, fpr_tpr = metric.calculate_auc_roc(Y, Y_, curve=True) if m[
-                                                                                     0] == 'aucroc+' else metric.calculate_auc_roc(
-                    Y, Y_)
+                aucroc, _ = evl.calculate_auc_roc(Y, Y_)
                 if df_mean.empty: df_mean = pd.DataFrame(columns=['mean'])
                 df_mean.loc['aucroc'] = aucroc
-                if fpr_tpr:
-                    with open(f'{predfile}.eval.roc.pkl', 'wb') as outfile: pickle.dump(fpr_tpr, outfile)
 
-            if (m := [m for m in evalcfg.metrics.other if
-                      'skill_coverage' in m]):  # since this metric comes with topks str like 'skill_coverage_2,5,10'
+            if (m := [m for m in metrics.other if 'skill_coverage' in m]):
                 log.info(f'{m} ...')
-                X = teamsvecs['skill'] if scipy.sparse.issparse(teamsvecs['skill']) else teamsvecs[
-                    'original_skill']  # to accomodate dense emb vecs of skills
-                X = X[splits['folds'][foldidx][pred_set]] if pred_set != 'test' else X[splits['test']]
-                df_skc, df_mean_skc = metric.calculate_skill_coverage(X, Y_, teamsvecs['skillcoverage'],
-                                                                      evalcfg.per_instance,
-                                                                      topks=m[0].replace('skill_coverage_', ''))
-                if df.empty:
-                    df = df_skc
-                else:
-                    df = pd.concat([df.reset_index(drop=True), df_skc.reset_index(drop=True)], axis=1)
-                if df_mean.empty:
-                    df_mean = df_mean_skc
-                else:
-                    df_mean = pd.concat([df_mean, df_mean_skc], axis=0)
+                assert 'skillcoverage' in self.teamsvecs, f'{opentf.textcolor["red"]}Skill coverage metrix is missing! Either remove this metric, or add the matrix to teamsvecs. See https://github.com/fani-lab/OpeNTF/blob/main/src/cmn/team.py#L302{opentf.textcolor["reset"]}'
+                X = self.teamsvecs['skill'][self.splits['test']]
+                df_skc, df_mean_skc = evl.calculate_skill_coverage(X, Y_, self.teamsvecs['skillcoverage'], per_instance, topks=m[0].replace('skill_coverage_', ''))
+                if df.empty: df = df_skc
+                else: df = pd.concat([df.reset_index(drop=True), df_skc.reset_index(drop=True)], axis=1)
+                if df_mean.empty: df_mean = df_mean_skc
+                else: df_mean = pd.concat([df_mean, df_mean_skc], axis=0)
             return df, df_mean
 
         Y = self.teamsvecs['member'][self.splits['test']]
         for key in metrics:
             if key != 'topk': metrics[key] = [m.replace('topk', metrics.topk) for m in metrics[key]]
-        log.info(f'{opentf.textcolor["magenta"]}Utility evaluation for {fpred_} using {metrics} ... {opentf.textcolor["reset"]}')
+        log.info(f'{opentf.textcolor["magenta"]}Utility evaluation for {fpred_} ... {opentf.textcolor["reset"]}')
         try:
             log.info(f'Before: Loading {fpred}.eval.mean.csv ...')
             df_before_mean = pd.read_csv(f'{fpred}.eval.mean.csv', names=['mean'], header=0)#we should already have it at f*.test.pred.eval.mean.csv

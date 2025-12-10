@@ -1,5 +1,5 @@
 # This is a replica of https://raw.githubusercontent.com/fani-lab/OpeNTF/refs/heads/main/src/pkgmgr.py
-import subprocess, sys, importlib, random, numpy, logging, re
+import subprocess, sys, importlib, random, numpy, logging, re, os
 log = logging.getLogger(__name__)
 from omegaconf import OmegaConf
 from itertools import chain
@@ -39,10 +39,11 @@ def install_import(pkg_name, import_path=None, from_module=None):
     import_path = import_path or pkg_name
     try: 
         module = importlib.import_module(import_path)
-        if(pkg_req_dict[pkg_name][1] != '0.0.0' and not is_version_equal(version(pkg_name), pkg_req_dict[pkg_name][1])):
-            log.info(f'{textcolor["yellow"]}Version mismatch detected. {pkg_name} version {version(pkg_name)} is installed, but {pkg_req_dict[pkg_name][1]} is required.{textcolor["reset"]}')
-            reinstall_pkg(pkg_name)
-            module = importlib.import_module(import_path)
+        if not os.path.realpath(module.__file__).startswith(os.path.realpath(os.getcwd())): # bypass those internally import like evl.metric, as in Adila submodule
+            if(pkg_req_dict[pkg_name][1] != '0.0.0' and not is_version_equal(version(pkg_name), pkg_req_dict[pkg_name][1])):
+                log.info(f'{textcolor["yellow"]}Version mismatch detected. {pkg_name} version {version(pkg_name)} is installed, but {pkg_req_dict[pkg_name][1]} is required.{textcolor["reset"]}')
+                reinstall_pkg(pkg_name)
+                module = importlib.import_module(import_path)
 
     except ImportError:
        log.info(f'{import_path} not found.')
