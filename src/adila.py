@@ -227,7 +227,11 @@ class Adila:
             results.append(result)
         df = pd.DataFrame(results)
         if per_instance: df.to_csv(f'{fpred_}.eval.fair.instance.csv', index=False)
-        df.mean(axis=0).to_frame(name='mean').rename_axis('metrics').to_csv(f'{fpred_}.eval.fair.mean.csv')
+
+        df_mean = df.mean(axis=0).rename_axis('metrics').reset_index()
+        df_mean[['type', 'metrics']] = df_mean['metrics'].str.split('.', n=1, expand=True)
+        df_mean = df_mean.pivot(index='metrics', columns='type', values=0).reset_index()
+        df_mean.rename(columns={'before': 'mean.before', 'after': 'mean.after'}).to_csv(f'{fpred_}.eval.fair.mean.csv', index=False)
         log.info(f'Saved at {fpred_}.eval.fair.mean{"/instance" if per_instance else ""}.csv.')
 
     def eval_utility(self, preds, fpred, preds_, fpred_, topK, metrics, per_instance=False) -> None:
