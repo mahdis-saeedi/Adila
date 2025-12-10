@@ -9,7 +9,7 @@ data:
   fteamsvecs: ../output/dblp/toy.dblp.v12.json/teamsvecs.pkl
   fgender:    ../output/dblp/toy.dblp.v12.json/females.csv
   fsplits:    ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85.pkl
-  fpred:      ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000 # a subfolder containing *.pred
+  fpred:      ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000 # a subfolder containing f*.test*.pred like f*.test.e*.pred or f*.test.pred
   #fpred:      ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/f0.test.pred # or a single file like f0.test.pred
   output:     ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
 

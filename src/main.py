@@ -14,8 +14,7 @@ def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, e
     elif os.path.isdir(fpred):
         log.info(f'Queuing all *.pred files at {fpred} for {opentf.textcolor["cyan"]}{adila} ... {opentf.textcolor["reset"]}');
         import glob; from functools import partial
-        fpreds = glob.glob(f'{glob.escape(fpred)}/*.pred')
-
+        fpreds = glob.glob(f'{glob.escape(fpred)}/f*.test.*pred')
         if 'per_epoch' not in evalcfg or not evalcfg.per_epoch: fpreds = [f for f in fpreds if not re.search(r'\.e\d+\.', os.path.basename(f))]
         if not fpreds: log.info(f'{opentf.textcolor["yellow"]}Nothing found! {opentf.textcolor["reset"]}'); return;
 
