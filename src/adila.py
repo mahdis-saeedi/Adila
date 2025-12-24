@@ -35,7 +35,7 @@ class Adila:
         # [[expertid, minority label, ranked prob], ...]
 
     def prep(self, output, fair_notion='dp', attribute='popularity', is_popular_alg='avg', coef=1.0, plot=None) -> tuple: #coefficient to calculate a threshold for popularity (e.g. if 1.5, threshold = 1.5 * average number of teams per expert)
-        self.output = f'{output}/adila/{attribute}'
+        self.output = f'{output}/adila/{attribute}{"." + is_popular_alg if attribute == "popularity" else ""}'
         if not os.path.isdir(self.output): os.makedirs(self.output)
         if not os.path.isdir(f'{self.output}/{fair_notion}'): os.makedirs(f'{self.output}/{fair_notion}')
         self.attribute = attribute
