@@ -26,8 +26,8 @@ def api(data):
         finally: print(f'{url}{f" -> {RED}[ERROR:{e_api}]{RESET}" if e_ize else ""}')
 
         o = (row.first, row.last,)
-        o += (1 if j_ize['gender'] == 'female' else (0 if j_ize['gender'] == 'male' else None), j_ize.probability * 100, req_ize.text,) if not e_ize else (None, None, f'ERROR:{e_ize}]')
-        o += (1 if j_api['gender'] == 'female' else (0 if j_api['gender'] == 'male' else None), j_api.accuracy, req_api.text,) if not e_api else (None, None, f'ERROR:{e_ize}]')
+        o += (True if j_ize['gender'] == 'female' else (False if j_ize['gender'] == 'male' else None), j_ize.probability * 100, req_ize.text,) if not e_ize else (None, None, f'ERROR:{e_ize}]')
+        o += (True if j_api['gender'] == 'female' else (False if j_api['gender'] == 'male' else None), j_api.accuracy, req_api.text,) if not e_api else (None, None, f'ERROR:{e_ize}]')
 
         output.append(o)
 
@@ -46,7 +46,7 @@ def plot(output):
     api_acc = output['genderapi-acc'].to_numpy(na_value=0)
     labels = output['first'].tolist()
 
-    sorted_indices = np.argsort(ize_acc - api_acc)
+    sorted_indices = np.argsort(ize_acc - api_acc)[::-1]
     ize_acc_sorted = ize_acc[sorted_indices]
     api_acc_sorted = api_acc[sorted_indices]
 
@@ -57,7 +57,7 @@ def plot(output):
     plt.xticks(ticks=np.arange(len(api_acc_sorted)), labels=labels, rotation=90); plt.xlabel('firstname')
 
     plt.title('genderize vs. genderapi'); plt.ylabel('accuracy (%)'); plt.ylim(0, 100)
-    plt.legend(); plt.tight_layout()
+    plt.legend(loc='center'); plt.tight_layout()
     plt.savefig('stats.pdf'); plt.savefig("stats.png")
     plt.show()
 
