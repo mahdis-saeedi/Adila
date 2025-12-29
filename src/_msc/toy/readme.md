@@ -1,1 +1,0 @@
-![comparison visualization](stats.png)
