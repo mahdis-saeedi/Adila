@@ -37,7 +37,7 @@ def imdb_extract_gender_dict(name_basics_tsv_path, output_dir):
             c2g[id_name] = value
             print(f'{row} --> {id_name} --> {value}')
 
-    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f)
 
 def dblp_extract_gender_dict(json_path, output_dir):
     c2g = {}
@@ -59,7 +59,7 @@ def dblp_extract_gender_dict(json_path, output_dir):
                 print(f'JSONDecodeError: There has been error in loading json line `{line}`!\n{e}')
                 continue
             except Exception as e: raise e
-    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f)
 
 def uspt_extract_gender_dict(inventor_tsv_path, output_dir):
     c2g = {}
@@ -77,7 +77,7 @@ def uspt_extract_gender_dict(inventor_tsv_path, output_dir):
             c2g[id_name] = value
             print(f'{row} --> {id_name} --> {value}')
 
-    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f)
 
 # c2g for the entire dataset is enough for other filtered dataset since it is a superset, including all experts
 # imdb_extract_gender_dict('../../output/imdb/title.basics.tsv/name.basics.tsv.gender.tsv', '../../output/imdb/title.basics.tsv/')
