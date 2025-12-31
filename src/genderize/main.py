@@ -22,30 +22,22 @@ class LabelDataset:
     def extractFirstName_DBLP(self,name):
         # Remove " thing
         name = name.replace('\"', '')
-
         # If there is a bracket e.g. textA (textB) -> assume textB is the first name
         is_bracket = name.find('(')
         if(is_bracket >= 0): name = name[is_bracket+1:]
-
         # Look for a space -> if there is no space -> return entire string
         ind = name.find(' ')
         if(ind >= 0): name = name[0:ind]
-
         is_bracket = name.find(')')
-
         if(is_bracket >= 0): return name[:is_bracket]
 
         return name
 
     def extractFirstName_IMDB(self,name):
         # Filter Characters:
-        name = name.replace('\"', '')
-        name = name.replace('\'', '')
-        
+        name = name.replace('\"', '').replace('\'', '')
         # Ignore names with these special characters
         if('$' in name or '#' in name or '!' in name): return None
-
-        
         ind = name.find(' ')
         if(ind >= 0): 
             # If the first string is initial -> e.g. A.
@@ -53,10 +45,8 @@ class LabelDataset:
                 ind2 = name[ind:].find(' ')
                 if(ind2 >= 0): return name[ind+1:ind2]
                 return None
-
             # No Initials:
             return name[0:ind]
-        
         return name
 
     def searchDBLP(self, jsonFile) -> None:
@@ -66,12 +56,10 @@ class LabelDataset:
         namesNP = np.array([])
 
         for line in open(jsonFile, 'r'):
-            if(line[0] == ','):
-                line = line[1:]
+            if(line[0] == ','): line = line[1:]
             try:
                 row = json.loads(line)
-                for author in row['authors']:
-                    names.append(self.extractFirstName_DBLP(author['name'])) # Get First Name
+                for author in row['authors']: names.append(self.extractFirstName_DBLP(author['name'])) # Get First Name
             except Exception as e:
                 # First Name cannot be obtained...
                 errorLines.append(line)
@@ -90,21 +78,16 @@ class LabelDataset:
 
         # Checks if any lines were skipped
         with open('src/util/UniqueNames/error.txt', 'w') as f:
-            for error in errorLines:
-                f.write(error + '\n')
+            for error in errorLines: f.write(error + '\n')
 
     # HEADER:
     # nconst	primaryName	gender genderProbability birthYear	deathYear	primaryProfession	knownForTitles
     def searchIMDB(self, tsvFile):
-        header = None
-        names = []
-        namesNP = np.array([])
+        header = None; names = []; namesNP = np.array([])
         i = 0 
 
         outputFile = open('src/util/UniqueNames/imdb_correctNames.tsv', 'w')
-
         errorFile = open('src/util/UniqueNames/imdb_errorFile.tsv', 'w')
-
         for line in open(tsvFile, 'r'):
             if(not header): 
                 header = line[:-1].split('\t')
@@ -116,18 +99,13 @@ class LabelDataset:
             print(f"Processing #{i}")
 
             line = line[:-1].split('\t')
-            gender = None
-            prob = None
+            gender = None; prob = None
 
             roles = line[4].split(',')
             if(roles[0] != ''):
-                # If actor/actress is specified -> assume True/False
-                if('actor' in roles):
-                    gender = True 
-                    prob = 1.0
-                elif('actress' in roles):
-                    gender = False
-                    prob = 1.0
+                # If actor/actress is specified -> assume False/True
+                if('actor' in roles): gender = False; prob = 1.0
+                elif('actress' in roles): gender = True; prob = 1.0
             
             if(not prob):
                 # Extract First Name:
@@ -145,12 +123,10 @@ class LabelDataset:
                 namesNP = np.hstack((namesNP, np.array(names))) # Combines names list with unique names list
                 namesNP = np.unique(ar=namesNP) # Find/sort unique names -> result is sorted
                 names = []
-        
-        
+
         namesNP = np.hstack((namesNP, np.array(names)))
         namesNP = np.unique(ar=namesNP)
         self.df = pd.DataFrame(None, index=namesNP, columns=[self.attribute, 'Probability'])
-
 
     # Example: "CestaAmedeo"
     # For DBLP Only
@@ -172,7 +148,6 @@ class LabelDataset:
         
         newStr = test_str[switchInd+1:] + ' ' + test_str[0: switchInd+1]
         return newStr
-
 
     # If we find a name with case 1: 
     def DBLP_filterNames(self, jsonFile, outputFile, errorFile) -> None:
@@ -220,8 +195,6 @@ class LabelDataset:
 
         outputFile.write(']')
         errorFile.write(']')
-    
-            
 
     # Scans through the result file and updates the dataframe with the appropriate gender for each unique name
     def addGenderResultsFromFile(self, folderOfResults, numOfEntries, inc=1000, start=0):
@@ -235,7 +208,7 @@ class LabelDataset:
                 # Checks if gender was found
                 if(results['gender']):
                     # Adds either True/False based on result in dataframe
-                    self.df.loc[results['name'], 'Gender'] = results['gender'] == 'male'
+                    self.df.loc[results['name'], 'Gender'] = not (results['gender'] == 'male')
                     # Adds Probability value:
                     self.df.loc[results['name'], 'Probability'] = results['probability']
                 print(f"{i} to {i+inc} has been searched")
@@ -257,8 +230,7 @@ class LabelDataset:
         urls = []
         # creates url string for all the names
         for index in self.df.index[a:b]:
-            if(len(index) > 1): 
-                urls.append(f"https://api.genderize.io?name={index}&apikey={key}")
+            if(len(index) > 1): urls.append(f"https://api.genderize.io?name={index}&apikey={key}")
 
         print(f"{len(urls)} URLs Made")
         reqs = (grequests.get(u) for u in urls) # creates url objects for each url
@@ -270,17 +242,13 @@ class LabelDataset:
             print(f"{result.status_code} -> {result.url}")
             rawOutput.write(f"{result.text}\n")
 
-    def printResults(self, head=None):
-        if(head): print(self.df.head(head))
-        else: print(self.df)
+    def printResults(self, head=None): print(self.df.head(head)) if(head) else print(self.df)
 
     # Labels IMDB name.basics.tsv file
     def labelIMDB_gender(self, input_tsvFile, output_tsvFile, error_tsvFile):
         header = None
-        i = 0 
-
+        i = 0
         outputFile = open(output_tsvFile, 'w')
-
         errorFile = open(error_tsvFile, 'w')
 
         # read each line in the names.basics.tsv file
@@ -298,8 +266,7 @@ class LabelDataset:
             else:
                 # Get the first name of the entry
                 name = self.extractFirstName_DBLP(lineArray[1])
-                if(name.lower() in self.df.index): # lower in case the lower case of the name exists
-                    name = name.lower()
+                if(name.lower() in self.df.index): name = name.lower()
                     
                 info = self.getDataFromName(name)
                 if(info == None): # NULL gender -> add to filter set and print to error file
@@ -377,14 +344,9 @@ class LabelDataset:
     # Labels the dataframe 
     def labelDataset_gender(self, datasetDirectory, newDatasetDirectory):
         newDataset = open(newDatasetDirectory, 'w')
-
         firstOutput = True
-        
-        checked = 0
-        success = 0
-
+        checked = 0; success = 0
         for line in open(datasetDirectory, 'r'):
-
             # A flag value that goes to TRUE if one of the author's gender could not be found
             failed = False
             if line[0] == '[': 
@@ -404,11 +366,8 @@ class LabelDataset:
                     name = name.lower()
                     
                 info = self.getDataFromName(name)
-                if(info == None):
-                    failed = True
-                else:
-                    row['authors'][i]['gender'] = {'value': info[0], 'probability': info[1]} 
-                
+                if(info == None): failed = True
+                else: row['authors'][i]['gender'] = {'value': info[0], 'probability': info[1]}
 
             if(not failed): 
                 if(not firstOutput): newDataset.write(',')
@@ -424,15 +383,10 @@ class LabelDataset:
     # returns None if gender could not be found
     def getDataFromName(self, name):
         try:
-            if(self.df.loc[name,self.attribute] == True):
-                return ('M', self.df.loc[name, "Probability"])
-            elif(self.df.loc[name,self.attribute] == False):
-                return ('F', self.df.loc[name, "Probability"])
-
-
+            if(self.df.loc[name,self.attribute] == True): return ('F', self.df.loc[name, "Probability"])
+            elif(self.df.loc[name,self.attribute] == False): return ('M', self.df.loc[name, "Probability"])
             return None
-        except KeyError:
-            return None
+        except KeyError: return None
     
     def confirmSortedAndUnique(self):
         print(f"UNIQUE: {self.df.index.is_unique}")
