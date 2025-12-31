@@ -239,28 +239,20 @@ class LabelDataset:
                     # Adds Probability value:
                     self.df.loc[results['name'], 'Probability'] = results['probability']
                 print(f"{i} to {i+inc} has been searched")
-        
-        
-
-
 
     # Private method used in makeParallelAPIReqs
-    def exception_handler(request, exception):
-        print("Request failed")
-        
+    def exception_handler(request, exception): print("Request failed")
 
     # Using the grequests library, each name from the dataframe will make a request for the gender information
     # NOTE: Please specify a range to make the API requests
     # For my machine, I had no problems using a range of 1000 for every call
     # The range is [a,b) -> inclusive a, exclusive b
-
     def makeParallelAPIReqs(self, apiKeyDirectory, a, b):
         key = ""
         rawOutput = open(f'src/util/UniqueNames/IMDBResults/ApiResults/apiOutput_{a}_to_{b}.txt', 'w')
         resultCodes = open(f'src/util/UniqueNames/IMDBResults/ApiResults/resultCodes_{a}_to_{b}.txt', 'w')
 
-        with open(apiKeyDirectory, 'r') as f:
-            key = f.readline()
+        with open(apiKeyDirectory, 'r') as f: key = f.readline()
 
         urls = []
         # creates url string for all the names
@@ -279,10 +271,8 @@ class LabelDataset:
             rawOutput.write(f"{result.text}\n")
 
     def printResults(self, head=None):
-        if(head):
-            print(self.df.head(head))
-        else:
-            print(self.df)
+        if(head): print(self.df.head(head))
+        else: print(self.df)
 
     # Labels IMDB name.basics.tsv file
     def labelIMDB_gender(self, input_tsvFile, output_tsvFile, error_tsvFile):
@@ -448,8 +438,7 @@ class LabelDataset:
         print(f"UNIQUE: {self.df.index.is_unique}")
         print(f"SORTED: {self.df.index.is_monotonic_increasing}")
 
-    def getCount(self):
-        print(f"Number of unique names: {self.df.shape[0]}")
+    def getCount(self): print(f"Number of unique names: {self.df.shape[0]}")
 
 def runIMDB(labelIMDB: LabelDataset):
     labelIMDB.searchIMDB('../name.basics.tsv')
@@ -501,7 +490,6 @@ def runDBLP(labelDBLP: LabelDataset):
 
 
     # STEP 2: Complete API Requests
-
     # API Requests for First Part: 
     for i in range(0, 273000, 1000):
         print(f"Working on {i} to {i+1000}")
