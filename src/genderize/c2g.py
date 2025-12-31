@@ -10,15 +10,15 @@
 #   3) generate {id_name: (gender, accuracy)}
 
 # datasets:
-# dblp: for all experts (authors)
-# imdb: for missing cast'ncrew like directors. based on actor/actress, we know for some of experts
-# uspt: none. all experts are labeled in original dataset
+# dblp: for all experts (authors): dblp.v12.json.gender.json -> c2g.pkl
+# imdb: for missing cast'ncrew like directors. based on actor/actress, we know for some of experts: name.basics.tsv.gender.tsv -> c2g.pkl
+# uspt: none. all experts are labeled in original dataset: inventor.tsv -> c2g.pkl
 
 import csv, pickle, json
 
-def imdb_extract_gender_dict(tsv_path, output_dir):
+def imdb_extract_gender_dict(name_basics_tsv_path, output_dir):
     c2g = {}
-    with open(tsv_path, newline='', encoding='utf-8') as f:
+    with open(name_basics_tsv_path, newline='', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter='\t', quotechar='"')
         next(reader, None) # skip the header
         for row in reader:
@@ -61,8 +61,23 @@ def dblp_extract_gender_dict(json_path, output_dir):
             except Exception as e: raise e
     with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-def uspt_extract_gender_dict(tsv_path, output_dir):
-    pass
+def uspt_extract_gender_dict(inventor_tsv_path, output_dir):
+    c2g = {}
+    with open(inventor_tsv_path, newline='', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter='\t', quotechar='"')
+        next(reader, None) #skip header
+        for row in reader:
+            inventor_id = row[0].strip()
+            name_first = row[1].strip()
+            name_last = row[2].strip()
+            male_flag = row[3].strip()
+            id_name = f'{inventor_id}_{name_first}_{name_last}'
+            if male_flag: value = (not bool(float(male_flag)), 100) # we keep isfemale, so not male_flag
+            else: value = (None, 0)
+            c2g[id_name] = value
 
-# imdb_extract_gender_dict('../../output/imdb/title.basics.tsv/name.basics.tsv.gender.tsv', '../../output/imdb/title.basics.tsv/')
-# dblp_extract_gender_dict('../../output/dblp/dblp.v12.json/dblp.v12.json.gender.json', '../../output/dblp/dblp.v12.json/')
+    with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+# imdb_extract_gender_dict('../../output/imdb/toy.title.basics.tsv/name.basics.tsv.gender.tsv', '../../output/imdb/toy.title.basics.tsv/')
+# dblp_extract_gender_dict('../../output/dblp/toy.dblp.v12.json/dblp.v12.json.gender.json', '../../output/dblp/toy.dblp.v12.json/')
+# uspt_extract_gender_dict('../../output/uspt/toy.patent.tsv/inventor.tsv', '../../output/uspt/toy.patent.tsv/')
