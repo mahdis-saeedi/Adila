@@ -75,9 +75,11 @@ def uspt_extract_gender_dict(inventor_tsv_path, output_dir):
             if male_flag: value = (not bool(float(male_flag)), 100) # we keep isfemale, so not male_flag
             else: value = (None, 0)
             c2g[id_name] = value
+            print(f'{row} --> {id_name} --> {value}')
 
     with open(f'{output_dir}c2g.pkl', 'wb') as f: pickle.dump(c2g, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-# imdb_extract_gender_dict('../../output/imdb/toy.title.basics.tsv/name.basics.tsv.gender.tsv', '../../output/imdb/toy.title.basics.tsv/')
+# c2g for the entire dataset is enough for other filtered dataset since it is a superset, including all experts
+# imdb_extract_gender_dict('../../output/imdb/title.basics.tsv/name.basics.tsv.gender.tsv', '../../output/imdb/title.basics.tsv/')
 # dblp_extract_gender_dict('../../output/dblp/toy.dblp.v12.json/dblp.v12.json.gender.json', '../../output/dblp/toy.dblp.v12.json/')
 # uspt_extract_gender_dict('../../output/uspt/toy.patent.tsv/inventor.tsv', '../../output/uspt/toy.patent.tsv/')
