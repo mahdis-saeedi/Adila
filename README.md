@@ -146,7 +146,7 @@ After successful run of all steps, the `{data.output}` like [`./output/dblp/toy.
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.mean.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.instance.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.mean.csv
-│   │   │   └── f0.test.pred.fa-ir.avg.10.5.rerank.pred
+│   │   │   └── f0.test.pred.fa-ir.auc.10.5.rerank.pred
 │   │   ├── eo
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.instance.csv
