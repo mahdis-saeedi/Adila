@@ -88,7 +88,7 @@ The above run, loads member recommendations by the `random` model in [`OpeNTF`](
 ### 3.1. Popularity
 <p align="center"><img src='./docs/bias_ecir_23/latex/figures/nteams_candidate-idx_.png' width="200" ></p>
 
-Based on the distribution of experts on teams, which is power law (long tail) as shown in the figure, we label those in the `tail` as `nonpopular` and those in the `head` as popular. To find the cutoff between `head` and `tail`, we calculate the `avg` number of teams per expert over the entire dataset, or based on equal area under the curve `auc`. The result is a set of expert ids for `popular` experts as the `minority` group and is save in `{data.output}/adila/popularity/labels.csv` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity/labels.csv`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity/labels.csv)
+Based on the distribution of experts on teams, which is power law (long tail) as shown in the figure, we label those in the `tail` as `nonpopular` and those in the `head` as popular. To find the cutoff between `head` and `tail`, we calculate the `avg` number of teams per expert over the entire dataset, or based on equal area under the curve `auc`. The result is a set of expert ids for `popular` experts as the `minority` group and is save in `{data.output}/adila/popularity.{avg,auc}/labels.csv` like [`./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity.avg/labels.csv`](./output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000/adila/popularity.avg/labels.csv)
 
 > We treat `popularity` as the `protected attribute` but the `protected group` is the set of `non-popular` experts, who are the `majority`, as opposed to the `minority` popular experts.
  
@@ -140,28 +140,19 @@ After successful run of all steps, the `{data.output}` like [`./output/dblp/toy.
 │   │   │   └── ratios.pkl
 │   │   ├── labels.csv
 │   │   └── stats.pkl
-│   ├── popularity
+│   ├── popularity.auc
 │   │   ├── dp
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.instance.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.mean.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.instance.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.mean.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.instance.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.mean.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.instance.csv
-│   │   │   └── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.mean.csv
+│   │   │   └── f0.test.pred.fa-ir.avg.10.5.rerank.pred
 │   │   ├── eo
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.instance.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.fair.mean.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.instance.csv
 │   │   │   ├── f0.test.pred.fa-ir.auc.10.5.rerank.pred.eval.utility.mean.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.instance.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.fair.mean.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.instance.csv
-│   │   │   ├── f0.test.pred.fa-ir.avg.10.5.rerank.pred.eval.utility.mean.csv
 │   │   │   └── ratios.pkl
 │   │   ├── labels.csv
 │   │   └── stats.pkl
