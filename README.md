@@ -9,7 +9,7 @@
 
 `Team Recommendation` aims to automate forming teams of experts who can collaborate and successfully solve tasks. While state-of-the-art methods are able to efficiently analyze massive collections of experts to recommend effective collaborative teams, they largely ignore the fairness in the recommended experts; our experiments show that they are biased toward `popular` and `male` experts. In `Adila`, we aim to mitigate the potential biases for fair team recommendation. Fairness breeds innovation and increases teams' success by enabling a stronger sense of community, reducing conflict, and stimulating more creative thinking. 
 
-We have studied the application of state-of-the-art [`deterministic greedy re-ranking methods [Geyik et al. KDD'19]`](https://dl.acm.org/doi/10.1145/3292500.3330691) in addition to [`probabilistic greedy re-ranking methods [Zehlike et al. IP&M'22]`](https://dl.acm.org/doi/abs/10.1016/j.ipm.2021.102707)to mitigate `populairty bias` and `gender bias` based on `equality of opportunity` and `demographic parity` notions of fairness for state-of-the-art neural team formation methods from [`OpeNTF`](https://github.com/fani-lab/opeNTF/). Our experiments show that:
+We have studied the application of state-of-the-art [`deterministic greedy re-ranking methods [Geyik et al. KDD'19]`](https://dl.acm.org/doi/10.1145/3292500.3330691) in addition to [`probabilistic greedy re-ranking methods [Zehlike et al. IP&M'22]`](https://dl.acm.org/doi/abs/10.1016/j.ipm.2021.102707)to mitigate `populairty bias` and `gender bias` based on `equal opportunity` and `demographic parity` notions of fairness for state-of-the-art neural team formation methods from [`OpeNTF`](https://github.com/fani-lab/opeNTF/). Our experiments show that:
 > Although deterministic re-ranking algorithms mitigate `popularity` xor `gender` bias, they hurt the efficacy of teams, i.e., higher fairness metrics yet lower utility metrics (successful team)
 
 > Probabilistic greedy re-ranking algorithms mitigate `popularity` bias significantly and maintain utility. Though in terms of `gender`, such algorithms fail due to extreme bias in a dataset. 
@@ -52,7 +52,7 @@ python main.py data.fpred=../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b
                data.output: ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000 \            # output folder for the reranked version and respective eval files
 
                "fair.algorithm=[fa-ir]" \       # fairness-aware reranker algorithm
-               "fair.notion=[eo]" \             # notion of fairness, equality of opportunity 
+               "fair.notion=[eo]" \             # notion of fairness, equal opportunity 
                "fair.attribute=[gender]" \      # protected/sensitive attribute  
 
                "eval.fair_metrics=[ndkl,skew]"                      # metrics to measure fairness of the original (before) vs. reranked (after) versions of recommendations 
