@@ -3,9 +3,17 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.8-blue) [![license: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![All Tests](https://img.shields.io/github/check-runs/fani-lab/Adila/main)](https://github.com/fani-lab/Adila/actions)
 
-> 2025, COIN, A Probabilistic Greedy Attempt to be Fair in Neural Team Recommendation. `Under Review`
+<sub>
+
+ ---
+ 
+> 2026, COIN, A Probabilistic Greedy Attempt to be Fair in Neural Team Recommendation. `Under Review: Revision Requested` [`pdf`](https://hosseinfani.github.io/res/papers/2026_COIN_A_Probabilistic_Greedy_Attempt_to_be_Fair_in_Neural_Team_Recommendation.pdf) [`reviews`](https://hosseinfani.github.io/res/papers/2026_COIN_A_Probabilistic_Greedy_Attempt_to_be_Fair_in_Neural_Team_Recommendation_R1.pdf)
 
 > 2023, BIAS-ECIR, Bootless Application of Greedy Re-ranking Algorithms in Fair Neural Team Formation.[`pdf`](https://hosseinfani.github.io/res/papers/2023_BIAS_ECIR_Bootless_Application_of_Greedy_Re-ranking_Algorithms_in_Fair_Neural_Team_Formation.pdf) [`doi`](https://doi.org/10.1007/978-3-031-37249-0_9) [`reviews`](https://hosseinfani.github.io/res/papers/2023_BIAS_ECIR_Bootless_Application_of_Greedy_Re-ranking_Algorithms_in_Fair_Neural_Team_Formation.txt) [`video`](https://www.youtube.com/watch?v=EmAFvANqzBM)
+
+---
+
+</sub>
 
 `Team Recommendation` aims to automate forming teams of experts who can collaborate and successfully solve tasks. While state-of-the-art methods are able to efficiently analyze massive collections of experts to recommend effective collaborative teams, they largely ignore the fairness in the recommended experts; our experiments show that they are biased toward `popular` and `male` experts. In `Adila`, we aim to mitigate the potential biases for fair team recommendation. Fairness breeds innovation and increases teams' success by enabling a stronger sense of community, reducing conflict, and stimulating more creative thinking. 
 
