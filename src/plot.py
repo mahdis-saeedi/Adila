@@ -4,6 +4,8 @@ from collections import Counter
 import pkgmgr as opentf
 
 pd = opentf.install_import('pandas')
+plt = opentf.install_import('matplotlib')
+plt.use("Agg") #no interactive windows, set a non-gui backend
 plt = opentf.install_import('matplotlib', 'matplotlib.pyplot')
 scipy = opentf.install_import('scipy')
 
@@ -28,8 +30,7 @@ def bubble_plot(fairness: list, utility: list, runtime: list, figsize: list = [1
     plt.ylabel(ylabel)
     # Brings legend out of the graph region
     plt.legend(bbox_to_anchor=(1, 1), loc='upper left', fontsize=10)
-    if save:
-        plt.savefig(f'{xlabel} vs {ylabel}.png')
+    if save: plt.savefig(f'{xlabel} vs {ylabel}.png')
     # Displays graph
     plt.show()
 
@@ -49,8 +50,7 @@ def plot_distribution(data1 : list, data2 : list, n : int):
     # Plotting vertical line to indicate mean
     ax.axvline(mean, linewidth = 1.5, linestyle = "--", color = 'red')
     # Plotting vertical lines for mean + n * stdev
-    for i in range(1, n + 1):
-        ax.axvline(mean + i * stdDev)
+    for i in range(1, n + 1): ax.axvline(mean + i * stdDev)
     # Titles for x and y axes
     plt.xlabel("X-Axis Values")
     plt.ylabel("Y-Axis Values")
@@ -77,12 +77,9 @@ def mid_calc(x : np.ndarray, y : np.ndarray)->int:
     right_area = round(np.trapz(y[mid_index : ], x[mid_index : ]), 3)
     # Finding the middle point that divides it equally
     while(abs(left_area - right_area) > 0.05 and start <= end):
-        if (left_area > right_area):
-            end = mid_index 
-        elif (right_area > left_area):
-            start = mid_index + 1
-        else:
-            return mid_index        
+        if (left_area > right_area): end = mid_index
+        elif (right_area > left_area): start = mid_index + 1
+        else: return mid_index
         mid_index = (start + end) // 2        
         left_area = round(np.trapz(y[ : mid_index + 1], x[ : mid_index + 1]), 3)
         right_area = round(np.trapz(y[mid_index : ], x[mid_index : ]), 3)
