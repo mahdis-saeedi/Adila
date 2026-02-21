@@ -24,8 +24,20 @@ class Adila:
         self.minorities = []
 
     def __str__(self): return f'{self.attribute}.{self.fair_notion}.{self.is_popular_alg}'
-    def _get_labeled_sorted_preds(self, preds, minorities):
-        sorted_probs, sorted_indices = preds.sort(dim=1, descending=True)  # |Test| * |Experts|
+    def _get_labeled_sorted_preds(self, preds, minorities, k_max):
+        if not preds.is_sparse: sorted_probs, sorted_indices = preds.sort(dim=1, descending=True)  # |Test| * |Experts|
+        else: #|Test| * |topK == k_max|, we need to avoid working with dense
+            rows, cols = preds.indices()
+            vals = preds.values()
+            order = torch.argsort(rows * (vals.max() + 1) - vals) # row-wise descending sort
+            rows, cols, vals = rows[order], cols[order], vals[order]
+            # print(torch.bincount(rows))
+            splits = torch.split(cols, torch.bincount(rows).tolist())
+            probs_splits = torch.split(vals, torch.bincount(rows).tolist())
+            # pad each row to topK==k_max (or preds.size(1) but that would be dense again)
+            sorted_indices = torch.stack([torch.cat([x, torch.tensor([i for i in range(k_max) if i not in x])]) for x in splits]) # pad col idx of zero values
+            sorted_probs = torch.stack([torch.cat([x, x.new_zeros(k_max - len(x))]) for x in probs_splits]) # pad zero values
+
         sorted_labels = (sorted_indices[..., None] == torch.tensor(minorities)).any(dim=-1)
         ## if |experts| are small/mid scale >> dense vector of boolean labels
         # labels = torch.zeros(preds.shape[1], dtype=torch.bool, device=preds.device)
@@ -118,8 +130,8 @@ class Adila:
                 frr = opentf.install_import('reranking')
 
             preds_ = preds.detach().clone() #for the final reranked probs
-            teams_ = self._get_labeled_sorted_preds(preds, minorities)
-            # [[expertid, minority label, ranked prob], ...]
+            teams_ = self._get_labeled_sorted_preds(preds, minorities, k_max)
+            # [[expertid, minority label, ranked prob], ...] ==> up to k_max tuples
 
             for i, team_ in enumerate(tqdm(teams_)):
                 if self.fair_notion == 'eo': r = min(max(ratios[i], 0.1), 0.9)  # dynamic ratio r, clamps to stay between [0.1,0.9]
