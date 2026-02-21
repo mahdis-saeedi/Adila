@@ -6,8 +6,8 @@ def init_process(): logging.basicConfig(level=logging.INFO)
 
 def __(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg):
     preds, preds_, fpred_ = adila.rerank(fpred, minorities, ratios, algorithm, k_max, alpha)
-    adila.eval_fair(preds, minorities, preds_, fpred_, ratios, evalcfg.topK, evalcfg.metrics.fair, evalcfg.per_instance)
-    adila.eval_utility(preds, fpred, preds_, fpred_, evalcfg.topK, evalcfg.metrics, evalcfg.per_instance)
+    adila.eval_fair(preds, minorities, preds_, fpred_, ratios, k_max, evalcfg.metrics.fair, evalcfg.per_instance)
+    adila.eval_utility(preds, fpred, preds_, fpred_, k_max, evalcfg.metrics, evalcfg.per_instance)
 
 def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, evalcfg):
     if os.path.isfile(fpred): __(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg)

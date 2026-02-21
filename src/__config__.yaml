@@ -25,7 +25,6 @@ fair: #post-hoc reranks of the prediction list
 
 eval:
   per_instance: True # needed for paired significance tests
-  topK: ${fair.k_max} # first stage retrieval to enhance efficiency
   metrics:
     fair: [ndkl, skew] #, exp, expu >> python 3.9+ from FairRankTune
     topk: '1,2,${fair.k_max}'

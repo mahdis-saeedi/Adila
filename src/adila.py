@@ -27,6 +27,7 @@ class Adila:
     def _get_labeled_sorted_preds(self, preds, minorities, k_max):
         if not preds.is_sparse: sorted_probs, sorted_indices = preds.sort(dim=1, descending=True)  # |Test| * |Experts|
         else: #|Test| * |topK == k_max|, we need to avoid working with dense
+            preds = preds.coalesce()
             rows, cols = preds.indices()
             vals = preds.values()
             order = torch.argsort(rows * (vals.max() + 1) - vals) # row-wise descending sort
@@ -34,9 +35,9 @@ class Adila:
             # print(torch.bincount(rows))
             splits = torch.split(cols, torch.bincount(rows).tolist())
             probs_splits = torch.split(vals, torch.bincount(rows).tolist())
-            # pad each row to topK==k_max (or preds.size(1) but that would be dense again)
-            sorted_indices = torch.stack([torch.cat([x, torch.tensor([i for i in range(k_max) if i not in x])]) for x in splits]) # pad col idx of zero values
-            sorted_probs = torch.stack([torch.cat([x, x.new_zeros(k_max - len(x))]) for x in probs_splits]) # pad zero values
+            # pad each row to k_max (or preds.size(1) but that would be dense again)
+            sorted_indices = torch.stack([torch.cat([x, torch.tensor([i for i in range(k_max) if i not in x])]) if len(x) < k_max else x[:k_max] for x in splits]) # pad col idx of zero values
+            sorted_probs   = torch.stack([torch.cat([x, x.new_zeros(k_max - len(x))]) if len(x) < k_max else x[:k_max] for x in probs_splits]) # pad zero values
 
         sorted_labels = (sorted_indices[..., None] == torch.tensor(minorities)).any(dim=-1)
         ## if |experts| are small/mid scale >> dense vector of boolean labels
@@ -176,28 +177,28 @@ class Adila:
             with open(fpred_, 'wb') as f: pickle.dump(preds_, f)
         return preds, preds_, fpred_
 
-    def eval_fair(self, preds, minorities, preds_, fpred_, ratios, topK, metrics=['skew', 'ndkl'], per_instance=False):
+    def eval_fair(self, preds, minorities, preds_, fpred_, ratios, k_max, metrics=['skew', 'ndkl'], per_instance=False):
         """
         Args:
             preds: loaded predictions from a .pred file
             minorities: list of popular or female labels (true labels)
             preds_, fpred_: re-ranked probs considering a cut-off min(k_max, preds.shape[1]) and the stored filename
             ratios: inferred or a desired ratio of minorities
-            topK: cutoff for fair reranking methods, ideally should be equal to k_max in reranking
+            k_max: cutoff for fair reranking methods
             metrics: fairness evaluation metrics
             per_instance: evaluation metric value for each test team instance
         Returns:
             None but the results are stored in *.csv files
         """
-        log.info(f'{opentf.textcolor["green"]}Fairness evaluation for {fpred_} using {metrics} with {topK} cutoff ...{opentf.textcolor["reset"]}')
+        log.info(f'{opentf.textcolor["green"]}Fairness evaluation for {fpred_} using {metrics} with {k_max} cutoff ...{opentf.textcolor["reset"]}')
         frr = opentf.install_import('reranking') # for ndkl and skew
-        teams = self._get_labeled_sorted_preds(preds, minorities)  # [5, 1, 3, 6, 2, 0, 4] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
-        teams_ = self._get_labeled_sorted_preds(preds_, minorities)  # [2, 0, 1, 5, 4, 3, 6] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
+        teams = self._get_labeled_sorted_preds(preds, minorities, k_max)  # [5, 1, 3, 6, 2, 0, 4] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
+        teams_ = self._get_labeled_sorted_preds(preds_, minorities, k_max)  # [2, 0, 1, 5, 4, 3, 6] -> [0.8, 0.5, 0.4, 0.3, 0.3, 0.1, 0.1]
 
         results = []
-        topK = min(topK, preds.shape[1])
+        k_max = min(k_max, preds.shape[1])
         for i, (team, team_) in enumerate(tqdm(zip(teams, teams_))):
-            lsteam, lsteam_ = team[:, 1][:topK].bool().tolist(), team_[:, 1][:topK].bool().tolist()
+            lsteam, lsteam_ = team[:, 1][:k_max].bool().tolist(), team_[:, 1][:k_max].bool().tolist()
             if self.fair_notion == 'eo': r = min(max(ratios[i], 0.1), 0.9)  # dynamic ratio r, clamps to stay between [0.1,0.9]
             else: r = ratios[0]
 
@@ -208,10 +209,10 @@ class Adila:
                     result[f'after.{metric}'] = frr.ndkl(lsteam_, {True: r, False: 1 - r})
 
                 if 'skew' == metric:
-                    result[f'before.{metric}.minority'] = frr.skew(lsteam.count(True)/topK, r)
-                    result[f'before.{metric}.majority'] = frr.skew(lsteam.count(False)/topK, 1 - r)
-                    result[f'after.{metric}.minority'] = frr.skew(lsteam_.count(True)/topK, r)
-                    result[f'after.{metric}.majority'] = frr.skew(lsteam_.count(False)/topK, 1 - r)
+                    result[f'before.{metric}.minority'] = frr.skew(lsteam.count(True)/k_max, r)
+                    result[f'before.{metric}.majority'] = frr.skew(lsteam.count(False)/k_max, 1 - r)
+                    result[f'after.{metric}.minority'] = frr.skew(lsteam_.count(True)/k_max, r)
+                    result[f'after.{metric}.majority'] = frr.skew(lsteam_.count(False)/k_max, 1 - r)
 
                 # if metric in ['exp', 'expu']:
                 #     frt = opentf.install_import('FairRankTune') #python 3.9+
@@ -246,19 +247,19 @@ class Adila:
         df_mean.rename(columns={'before': 'mean.before', 'after': 'mean.after'}).to_csv(f'{fpred_}.eval.fair.mean.csv', index=False)
         log.info(f'Saved at {fpred_}.eval.fair.mean{"/instance" if per_instance else ""}.csv.')
 
-    def eval_utility(self, preds, fpred, preds_, fpred_, topK, metrics, per_instance=False) -> None:
+    def eval_utility(self, preds, fpred, preds_, fpred_, k_max, metrics, per_instance=False) -> None:
         """
         Args:
             preds: the file for the predictions, *.pred file
             preds_: the file for the re-ranked probs considering a cut-off min(k_max, preds.shape[1]) and the stored filename
-            topK: first stage retrieval for efficiency
+            k_max: cutoff for fair reranking methods
             metrics: utility evaluation metrics
             per_instance: evaluation metric value for each test team instance
         Returns:
             None but the results are stored in *.csv files
         """
 
-        def _evaluate(Y_, metrics, per_instance, topK):
+        def _evaluate(Y_, metrics, per_instance, k_max):
             df, df_mean = pd.DataFrame(), pd.DataFrame()
             if not (metrics.trec or metrics.other): df, df_mean
             # evl = opentf.install_import('evl.metric', 'metric_')
@@ -268,7 +269,7 @@ class Adila:
             # from https://github.com/fani-lab/OpeNTF/blob/main/src/mdl/ntf.py#L59
             if metrics.trec:
                 log.info(f'{metrics.trec} ...')
-                df, df_mean = evl.calculate_metrics(Y, Y_, topK, per_instance, metrics.trec)
+                df, df_mean = evl.calculate_metrics(Y, Y_, k_max, per_instance, metrics.trec)
             if (m := [m for m in metrics.other if 'aucroc' in m]):
                 log.info(f'{m} ...')
                 aucroc, _ = evl.calculate_auc_roc(Y, Y_)
@@ -296,7 +297,7 @@ class Adila:
             if per_instance: df_before = pd.read_csv(f'{fpred}.eval.instance.csv', header=0)
         except FileNotFoundError:
             log.info(f'Before: Loading {fpred}.eval.mean.csv failed! Evaluating from scratch ...')
-            df_before, df_before_mean = _evaluate(preds, metrics, per_instance, topK)
+            df_before, df_before_mean = _evaluate(preds, metrics, per_instance, k_max)
             if per_instance: df_before.to_csv(f'{fpred}.eval.instance.csv', float_format='%.5f', index=False)
             log.info(f'Before: Saving {fpred}.eval.mean.csv ...')
             df_before_mean.to_csv(f'{fpred}.eval.mean.csv')
@@ -305,7 +306,7 @@ class Adila:
         df_before_mean.rename(columns={'mean': 'mean.before'}, inplace=True)
 
         log.info(f'After: Evaluating {fpred_} ...')
-        df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, topK)
+        df_after, df_after_mean = _evaluate(preds_, metrics, per_instance, k_max)
         if per_instance: df_after.rename(columns={c: f'{c}.after' for c in df_after.columns}, inplace=True)
         df_after_mean.rename(columns={'mean': 'mean.after'}, inplace=True)
         if per_instance: pd.concat([df_before.reset_index(drop=True), df_after.reset_index(drop=True)], axis=1).to_csv(f'{fpred_}.eval.utility.instance.csv', float_format='%.5f', index=False)
