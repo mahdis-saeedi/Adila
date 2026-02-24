@@ -165,7 +165,11 @@ class Adila:
 
                 else: raise ValueError('Invalid fair reranking algorithm!')
 
-                for j, expert_ in enumerate(experts_): preds_[i][expert_] = team_[j][2]
+                for j, expert_ in enumerate(experts_):
+                    if not preds.is_sparse: preds_[i][expert_] = team_[j][2]
+                    else: #sparse coo is immutable, cannot assign/modify values as it changes sparsity pattern
+                        mask = (preds_.indices()[0] == i) & (preds_.indices()[1] == expert_) # within the k_max/topK nnz values
+                        preds_.values()[mask] = team_[j][2]
                 # we switch the top-rank probs for top-re-ranked experts
                 # this way both lists give correct top experts after final rankings for evaluation
                 # example:
