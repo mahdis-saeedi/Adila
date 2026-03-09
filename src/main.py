@@ -8,9 +8,11 @@ def __(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg):
     preds, preds_, fpred_ = adila.rerank(fpred, minorities, ratios, algorithm, k_max, alpha)
     adila.eval_fair(preds, minorities, preds_, fpred_, ratios, k_max, evalcfg.metrics.fair, evalcfg.per_instance)
     adila.eval_utility(preds, fpred, preds_, fpred_, k_max, evalcfg.metrics, evalcfg.per_instance)
+    return fpred_
 
 def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, evalcfg):
-    if os.path.isfile(fpred): __(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg)
+    outputs = []
+    if os.path.isfile(fpred): outputs.append(__(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg))
     elif os.path.isdir(fpred):
         log.info(f'Queuing all *.pred files at {fpred} for {opentf.textcolor["cyan"]}{adila} ... {opentf.textcolor["reset"]}');
         import glob; from functools import partial
@@ -20,10 +22,11 @@ def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, e
 
         n_processes = multiprocessing.cpu_count() - 1 if acceleration == 'cpu' else int(acceleration.split(':')[1])
         if n_processes < 2:
-            for fpred in fpreds: __(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg)
+            for fpred in fpreds: outputs.append(__(fpred, adila, minorities, ratios, algorithm, k_max, alpha, evalcfg))
         else:
             with multiprocessing.Pool(initializer=init_process, processes=n_processes) as p:
-                p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, algorithm=algorithm, k_max=k_max, alpha=alpha, evalcfg=evalcfg), fpreds)
+                outputs = p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, algorithm=algorithm, k_max=k_max, alpha=alpha, evalcfg=evalcfg), fpreds)
+    return outputs
 
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:
