@@ -36,7 +36,7 @@ class Adila:
             splits = torch.split(cols, torch.bincount(rows).tolist())
             probs_splits = torch.split(vals, torch.bincount(rows).tolist())
             # pad each row to k_max (or preds.size(1) but that would be dense again)
-            sorted_indices = torch.stack([torch.cat([x, torch.tensor([i for i in range(k_max) if i not in x])]) if len(x) < k_max else x[:k_max] for x in splits]) # pad col idx of zero values
+            sorted_indices = torch.stack([torch.cat([x, torch.tensor([i for i in range(k_max) if i not in x])[:(k_max - len(x))]]) if len(x) < k_max else x[:k_max] for x in splits]) # pad col idx of zero values
             sorted_probs   = torch.stack([torch.cat([x, x.new_zeros(k_max - len(x))]) if len(x) < k_max else x[:k_max] for x in probs_splits]) # pad zero values
 
         sorted_labels = (sorted_indices[..., None] == torch.tensor(minorities)).any(dim=-1)
@@ -208,15 +208,19 @@ class Adila:
 
             result = {}
             for metric in metrics:
-                if 'ndkl' == metric:
-                    result[f'before.{metric}'] = frr.ndkl(lsteam, {True: r, False: 1 - r})
-                    result[f'after.{metric}'] = frr.ndkl(lsteam_, {True: r, False: 1 - r})
+                if 'ndkl' in metric:
+                    topks = metric.split('_')[1].split(',')
+                    for topk in map(int, topks):
+                        result[f'before.ndkl_{topk}'] = frr.ndkl(lsteam[:topk], {True: r, False: 1 - r})
+                        result[f'after.ndkl_{topk}'] = frr.ndkl(lsteam_[:topk], {True: r, False: 1 - r})
 
-                if 'skew' == metric:
-                    result[f'before.{metric}.minority'] = frr.skew(lsteam.count(True)/k_max, r)
-                    result[f'before.{metric}.majority'] = frr.skew(lsteam.count(False)/k_max, 1 - r)
-                    result[f'after.{metric}.minority'] = frr.skew(lsteam_.count(True)/k_max, r)
-                    result[f'after.{metric}.majority'] = frr.skew(lsteam_.count(False)/k_max, 1 - r)
+                if 'skew' in metric:
+                    topks = metric.split('_')[1].split(',')
+                    for topk in map(int, topks):
+                        result[f'before.skew_{topk}.minority'] = frr.skew(lsteam[:topk].count(True)/topk, r)
+                        result[f'before.skew_{topk}.majority'] = frr.skew(lsteam[:topk].count(False)/topk, 1 - r)
+                        result[f'after.skew_{topk}.minority'] = frr.skew(lsteam_[:topk].count(True)/topk, r)
+                        result[f'after.skew_{topk}.majority'] = frr.skew(lsteam_[:topk].count(False)/topk, 1 - r)
 
                 # if metric in ['exp', 'expu']:
                 #     frt = opentf.install_import('FairRankTune') #python 3.9+
@@ -269,7 +273,7 @@ class Adila:
             # evl = opentf.install_import('evl.metric', 'metric_')
             evl = opentf.install_import('evl.metric', 'evl.metric')
             # evl.metric works on numpy or scipy.sparse. so, we need to convert Y_ which is torch.tensor, either sparse or not
-            Y_ = Y_.to_dense().numpy()
+            Y_ = opentf.torch_sparse_2_scipy_sparse(Y_, 'csr') if Y_.is_sparse else Y_.cpu().numpy()
             # from https://github.com/fani-lab/OpeNTF/blob/main/src/mdl/ntf.py#L59
             if metrics.trec:
                 log.info(f'{metrics.trec} ...')
@@ -292,8 +296,6 @@ class Adila:
             return df, df_mean
 
         Y = self.teamsvecs['member'][self.splits['test']]
-        for key in metrics:
-            if key != 'topk': metrics[key] = [m.replace('topk', metrics.topk) for m in metrics[key]]
         log.info(f'{opentf.textcolor["magenta"]}Utility evaluation for {fpred_} ... {opentf.textcolor["reset"]}')
         try:
             log.info(f'Before: Loading {fpred}.eval.mean.csv ...')

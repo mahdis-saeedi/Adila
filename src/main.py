@@ -32,6 +32,8 @@ def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, e
 def run(cfg) -> None:
     from adila import Adila; import plot
     adila = Adila(cfg.data.fteamsvecs, cfg.data.fsplits, cfg.data.fgender)
+    for key in cfg.eval.metrics:
+        if key != 'topk': cfg.eval.metrics[key] = [m.replace('topk', cfg.eval.metrics.topk) for m in cfg.eval.metrics[key]]
     for attribute in cfg.fair.attribute:
         for notion in cfg.fair.notion:
             for is_popular_alg in [None] if attribute == 'gender' else cfg.fair.is_popular_alg:  # is_popular_alg has nothing to do with gender debiasing, so single default value
