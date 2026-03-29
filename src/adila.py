@@ -13,7 +13,7 @@ class Adila:
         if isinstance(fteamsvecs, dict): self.teamsvecs = fteamsvecs
         else:
             with open(fteamsvecs, 'rb') as f: self.teamsvecs = pickle.load(f)
-        if isinstance(fteamsvecs, dict): self.splits = fsplits
+        if isinstance(fsplits, dict): self.splits = fsplits
         else:
             with open(fsplits, 'rb') as f: self.splits = pickle.load(f)
 
@@ -251,7 +251,7 @@ class Adila:
 
         df_mean = df.mean(axis=0).rename_axis('metrics').reset_index()
         df_mean[['type', 'metrics']] = df_mean['metrics'].str.split('.', n=1, expand=True)
-        df_mean = df_mean.pivot(index='metrics', columns='type', values=0).reset_index()
+        df_mean = df_mean.pivot_table(index='metrics', columns='type', values=0, sort=False).reset_index()
         df_mean.rename(columns={'before': 'mean.before', 'after': 'mean.after'}).to_csv(f'{fpred_}.eval.fair.mean.csv', index=False)
         log.info(f'Saved at {fpred_}.eval.fair.mean{"/instance" if per_instance else ""}.csv.')
 

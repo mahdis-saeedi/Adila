@@ -26,7 +26,7 @@ def _(adila, fpred, minorities, ratios, algorithm, k_max, alpha, acceleration, e
         else:
             with multiprocessing.Pool(initializer=init_process, processes=n_processes) as p:
                 outputs = p.map(partial(__, adila=adila, minorities=minorities, ratios=ratios, algorithm=algorithm, k_max=k_max, alpha=alpha, evalcfg=evalcfg), fpreds)
-    return outputs
+    return sorted(outputs)
 
 @hydra.main(version_base=None, config_path='.', config_name='__config__')
 def run(cfg) -> None:

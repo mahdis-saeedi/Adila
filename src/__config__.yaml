@@ -14,7 +14,7 @@ data:
   output:     ../output/dblp/toy.dblp.v12.json/splits.f3.r0.85/rnd.b1000
 
 fair: #post-hoc reranks of the prediction list
-  algorithm: [fa-ir, det_greedy, det_relaxed, det_const_sort, det_cons] #reranking algorithms
+  algorithm: [fa-ir, det_greedy, det_relaxed, det_const_sort] #reranking algorithms (det_const is buggy for some k_max values :\)
   notion: [eo,dp] # equality of odds (eo), demographic parity (dp)
   attribute: [gender, popularity] #the sensitive attribute(s)
   k_max: 5 #cutoff for the reranking algorithms; this is the max depth, e.g., 100 or 1000, the algorithm goes down the list to bring up an expert
